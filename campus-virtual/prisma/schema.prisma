@@ -1,7 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// En tu archivo prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,49 +10,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enum para los roles de los usuarios
 enum Role {
   STUDENT // Alumno
   TEACHER // Docente
 }
 
+// Modelo principal para los usuarios de la plataforma
 model User {
-  id              Int        @id @default(autoincrement())
-  email           String     @unique
-  password        String     // Contraseña hasheada
-  name            String?
-  role            Role       @default(STUDENT)
-  coursesCreated  Course[]   @relation("CoursesTaught") // Cursos que un docente ha creado
-  coursesJoined   Course[]   @relation("CoursesEnrolled") // Cursos a los que un alumno está asignado
-  submissions     Submission[]
+  id               Int          @id @default(autoincrement())
+  email            String       @unique
+  password         String       // Contraseña hasheada
+  
+  // Campos del nuevo formulario de registro
+  name             String?
+  lastName         String?
+  DNI              String?      @unique
+  birthDate        DateTime?
+  courseCode       String?
+
+  role             Role         @default(STUDENT)
+  coursesCreated   Course[]     @relation("CoursesTaught") // Cursos que un docente ha creado
+  coursesJoined    Course[]     @relation("CoursesEnrolled") // Cursos a los que un alumno está asignado
+  submissions      Submission[]
 }
 
+// Modelo para los cursos
 model Course {
-  id              Int        @id @default(autoincrement())
-  title           String
-  description     String
-  teacherId       Int
-  teacher         User       @relation("CoursesTaught", fields: [teacherId], references: [id])
-  students        User[]     @relation("CoursesEnrolled")
-  assignments     Assignment[] // Ejercicios en este curso
+  id               Int          @id @default(autoincrement())
+  title            String
+  description      String
+  teacherId        Int
+  teacher          User         @relation("CoursesTaught", fields: [teacherId], references: [id])
+  students         User[]       @relation("CoursesEnrolled")
+  assignments      Assignment[] // Ejercicios en este curso
 }
 
+// Modelo para las tareas o asignaciones
 model Assignment {
-  id              Int        @id @default(autoincrement())
-  title           String
-  description     String
-  // Editor de texto para la consigna
-  courseId        Int
-  course          Course     @relation(fields: [courseId], references: [id])
-  submissions     Submission[]
+  id               Int          @id @default(autoincrement())
+  title            String
+  description      String
+  courseId         Int
+  course           Course       @relation(fields: [courseId], references: [id])
+  submissions      Submission[]
 }
 
+// Modelo para las entregas de los alumnos
 model Submission {
-  id              Int        @id @default(autoincrement())
-  submissionUrl   String     // URL de la entrega
-  submittedAt     DateTime   @default(now())
-  status          String?    // Por ejemplo: 'Pendiente', 'Terminado'
-  studentId       Int
-  student         User       @relation(fields: [studentId], references: [id])
-  assignmentId    Int
-  assignment      Assignment @relation(fields: [assignmentId], references: [id])
+  id               Int          @id @default(autoincrement())
+  submissionUrl    String       // URL de la entrega
+  submittedAt      DateTime     @default(now())
+  status           String?      // Por ejemplo: 'Pendiente', 'Terminado'
+  studentId        Int
+  student          User         @relation(fields: [studentId], references: [id])
+  assignmentId     Int
+  assignment       Assignment   @relation(fields: [assignmentId], references: [id])
 }

@@ -1,32 +1,36 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { CalendarClock } from 'lucide-react';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { loginUser } from '@/lib/actions';
+import { useState } from "react";
+import Link from "next/link";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { loginUser } from "@/lib/actions";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: 'Ingrese un email válido' }),
-  password: z.string().min(1, { message: 'La contraseña es requerida' }),
+  email: z.string().email({ message: "Ingrese un email válido" }),
+  password: z.string().min(1, { message: "La contraseña es requerida" }),
 });
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
@@ -37,18 +41,30 @@ export default function LoginPage() {
         email: values.email,
         password: values.password,
       });
-
-      // You can add a success toast here if the action returns successfully (no redirect).
-      // However, since the server action redirects, this code is typically not reached.
-
     } catch (error) {
-      // Check if the error is a Next.js redirect signal.
-      if (error && (error as Error).message.includes('NEXT_REDIRECT')) {
-        // The redirect is handled on the server, so we do nothing here.
+      if (error && (error as Error).message.includes("NEXT_REDIRECT")) {
+        // La redirección es exitosa. No hacemos nada.
       } else {
-        // Handle actual login errors (e.g., invalid credentials).
-        toast.error('Error al iniciar sesión', {
-          description: error instanceof Error ? error.message : 'Ocurrió un error inesperado. Intenta nuevamente.',
+        // Si hay un error real (credenciales incorrectas),
+        // lo mostramos en los campos del formulario.
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error inesperado.";
+
+        // Marcar ambos campos, email y contraseña, con el mismo error.
+        form.setError("email", {
+          type: "server",
+          message: errorMessage,
+        });
+        form.setError("password", {
+          type: "server",
+          message: errorMessage,
+        });
+
+        // Opcional: también puedes usar un toast para un mensaje de error global
+        toast.error("Error de autenticación", {
+          description: errorMessage,
         });
       }
     } finally {
@@ -57,32 +73,72 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Link href="/" className="flex items-center space-x-2">
-            <CalendarClock className="h-6 w-6 text-teal-600" />
-            <span className="text-xl font-bold text-teal-600">Campus Virtual</span>
-          </Link>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <header className="bg-white shadow-sm">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="text-xl font-bold text-gray-800">rpl.etec</div>
+          <nav className="space-x-4 flex items-center">
+            <Link
+              href="/login"
+              className="text-blue-600 font-medium hover:text-blue-800"
+            >
+              Iniciar sesión
+            </Link>
+            <Link
+              href="/register"
+              className="text-gray-600 font-medium hover:text-gray-800"
+            >
+              Registrarse
+            </Link>
+          </nav>
         </div>
       </header>
-      <main className="flex-1 flex items-center justify-center p-4 bg-gray-50">
+
+      <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-white p-8 rounded-lg shadow-sm border">
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold">Iniciar Sesión</h1>
-              <p className="text-gray-600 mt-1">Ingresa tus datos para continuar</p>
+          <div className="bg-white p-8 rounded-lg shadow-sm border text-center">
+            <div className="flex justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="60"
+                height="60"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-folder-open-dot"
+              >
+                <path d="M19 20a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-4h5a2 2 0 0 1 2 2v13z" />
+                <circle cx="12" cy="13" r="1" />
+              </svg>
             </div>
+
+            <h1 className="text-2xl font-bold text-gray-800">Iniciar Sesión</h1>
+            <p className="text-gray-600 mt-1">
+              Bienvenido a la plataforma educativa
+            </p>
+
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4 mt-6"
+              >
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel className="sr-only">
+                        Correo Electrónico
+                      </FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="ejemplo@correo.com" {...field} />
+                        <Input
+                          type="email"
+                          placeholder="ejemplo@etec.uba.ar"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -93,23 +149,42 @@ export default function LoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contraseña</FormLabel>
+                      <FormLabel className="sr-only">Contraseña</FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <Input
+                          type="password"
+                          placeholder="Ingresa tu contraseña"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-800 hover:bg-blue-700 text-white font-bold"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
                 </Button>
               </form>
             </Form>
-            <div className="mt-6 text-center text-sm">
-              ¿No tienes una cuenta?{' '}
-              <Link href="/register" className="text-teal-600 hover:underline font-medium">
-                Registrarse
+
+            <div className="mt-4 text-sm text-center">
+              <a href="#" className="text-blue-600 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </a>
+            </div>
+
+            <div className="mt-6 text-sm">
+              ¿No tienes una cuenta?{" "}
+              <Link
+                href="/register"
+                className="text-blue-600 font-medium hover:underline"
+              >
+                Regístrate aquí
               </Link>
             </div>
           </div>
