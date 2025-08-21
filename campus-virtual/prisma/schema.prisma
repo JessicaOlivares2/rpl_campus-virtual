@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// En tu archivo prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT // Alumno
+  TEACHER // Docente
+}
+
+model User {
+  id              Int        @id @default(autoincrement())
+  email           String     @unique
+  password        String     // Contraseña hasheada
+  name            String?
+  role            Role       @default(STUDENT)
+  coursesCreated  Course[]   @relation("CoursesTaught") // Cursos que un docente ha creado
+  coursesJoined   Course[]   @relation("CoursesEnrolled") // Cursos a los que un alumno está asignado
+  submissions     Submission[]
+}
+
+model Course {
+  id              Int        @id @default(autoincrement())
+  title           String
+  description     String
+  teacherId       Int
+  teacher         User       @relation("CoursesTaught", fields: [teacherId], references: [id])
+  students        User[]     @relation("CoursesEnrolled")
+  assignments     Assignment[] // Ejercicios en este curso
+}
+
+model Assignment {
+  id              Int        @id @default(autoincrement())
+  title           String
+  description     String
+  // Editor de texto para la consigna
+  courseId        Int
+  course          Course     @relation(fields: [courseId], references: [id])
+  submissions     Submission[]
+}
+
+model Submission {
+  id              Int        @id @default(autoincrement())
+  submissionUrl   String     // URL de la entrega
+  submittedAt     DateTime   @default(now())
+  status          String?    // Por ejemplo: 'Pendiente', 'Terminado'
+  studentId       Int
+  student         User       @relation(fields: [studentId], references: [id])
+  assignmentId    Int
+  assignment      Assignment @relation(fields: [assignmentId], references: [id])
+}
