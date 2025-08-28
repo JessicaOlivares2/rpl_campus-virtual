@@ -9,8 +9,10 @@ test("login exitoso y redirección a la página de mis cursos", async ({
   await page.goto("http://localhost:3000/login");
 
   // 2. Llenar el formulario de login con credenciales válidas
-  await page.getByPlaceholder("ejemplo@etec.uba.ar").fill("lopez@etec.uba.ar");
-  await page.getByPlaceholder("Ingresa tu contraseña").fill("lopez123");
+  await page
+    .getByPlaceholder("ejemplo@etec.uba.ar")
+    .fill("valeria@etec.uba.ar");
+  await page.getByPlaceholder("Ingresa tu contraseña").fill("valeria123");
 
   // 3. Hacer clic en el botón de iniciar sesión
   await page.getByRole("button", { name: "Iniciar Sesión" }).click();
