@@ -8,29 +8,31 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 // Esquema de Zod para la validación de la entrada
+// CAMBIO 1: Renombrar y hacer requerido el campo de código
 const registerSchema = z.object({
-  name: z
-    .string()
-    .min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
-  lastName: z
-    .string()
-    .min(2, { message: "El apellido debe tener al menos 2 caracteres" }),
+  name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
+  lastName: z.string().min(2, { message: "El apellido debe tener al menos 2 caracteres" }),
   email: z.string().email({ message: "Ingrese un email válido" }),
-  DNI: z
-    .string()
-    .regex(/^\d{7,8}$/, {
-      message: "El DNI debe tener 7 u 8 dígitos sin puntos ni espacios",
-    }),
-  birthDate: z
-    .string()
-    .regex(/^\d{2}\/\d{2}\/\d{4}$/, {
-      message: "Formato de fecha inválido (dd/mm/aaaa)",
-    }),
-  courseCode: z.string().optional(),
-  password: z
-    .string()
-    .min(6, { message: "La contraseña debe tener al menos 6 caracteres" }),
+  DNI: z.string().regex(/^\d{7,8}$/, {
+    message: "El DNI debe tener 7 u 8 dígitos sin puntos ni espacios",
+  }),
+  birthDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, {
+    message: "Formato de fecha inválido (dd/mm/aaaa)",
+  }),
+  commissionCode: z.string().min(1, { message: "El código de comisión es requerido" }),
+  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres" }),
+  confirmPassword: z.string(),
+})
+.refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
 });
+
+// Función de utilidad para convertir la fecha de 'dd/mm/aaaa' a 'mm/dd/aaaa'
+function convertDate(dateString: string) {
+  const [day, month, year] = dateString.split("/");
+  return `${month}/${day}/${year}`;
+}
 
 export async function registerUser(values: z.infer<typeof registerSchema>) {
   try {
@@ -42,18 +44,45 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
       throw new Error("El email ya está registrado");
     }
 
+    // CAMBIO 2: Buscar la comisión por el código
+    const commission = await prisma.commission.findUnique({
+      where: { registrationCode: values.commissionCode },
+      include: {
+        courses: true,
+      },
+    });
+
+    if (!commission) {
+      throw new Error("Código de comisión inválido");
+    }
+
+    // Convertir la fecha antes de crear el objeto Date
+    const convertedDate = convertDate(values.birthDate);
+    const birthDateObject = new Date(convertedDate);
+
+    // Validar si el objeto de fecha es válido
+    if (isNaN(birthDateObject.getTime())) {
+      throw new Error("Formato de fecha de nacimiento inválido");
+    }
+
     const hashedPassword = await bcrypt.hash(values.password, 10);
 
+    // CAMBIO 3: Crear el usuario y conectarlo a la comisión y sus cursos
     await prisma.user.create({
       data: {
         name: values.name,
         lastName: values.lastName,
         email: values.email,
         DNI: values.DNI,
-        birthDate: new Date(values.birthDate), // Convertir la fecha a un objeto Date
-        courseCode: values.courseCode,
+        birthDate: birthDateObject, // Usamos el objeto de fecha válido
         password: hashedPassword,
         role: "STUDENT",
+        // Conecta el usuario a la comisión
+        commissionId: commission.id,
+        // Conecta el usuario a todos los cursos de esa comisión
+        coursesJoined: {
+          connect: commission.courses.map((course) => ({ id: course.id })),
+        },
       },
     });
 
@@ -70,8 +99,7 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
     throw new Error("Error al registrar el usuario");
   }
 }
-
-// ... (Resto de tus funciones como loginUser)
+// (loginUser)
 
 export async function loginUser({
   email,

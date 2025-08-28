@@ -35,7 +35,11 @@ const registerSchema = z
     birthDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, {
       message: "Formato de fecha inválido (dd/mm/aaaa)",
     }),
-    courseCode: z.string().optional(),
+    // === CAMBIO AQUÍ ===
+    commissionCode: z
+      .string()
+      .min(1, { message: "El código de comisión es requerido" }),
+    // ==================
     password: z
       .string()
       .min(6, { message: "La contraseña debe tener al menos 6 caracteres" }),
@@ -57,7 +61,9 @@ export default function RegisterPage() {
       email: "",
       DNI: "",
       birthDate: "",
-      courseCode: "",
+      // === CAMBIO AQUÍ ===
+      commissionCode: "",
+      // ==================
       password: "",
       confirmPassword: "",
     },
@@ -66,14 +72,16 @@ export default function RegisterPage() {
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     setIsLoading(true);
     try {
-      // Pasa todos los valores del formulario a la acción del servidor
+      // Pasa el código de comisión a la acción del servidor
       await registerUser({
         name: values.name,
         lastName: values.lastName,
         email: values.email,
         DNI: values.DNI,
         birthDate: values.birthDate,
-        courseCode: values.courseCode,
+        // === CAMBIO AQUÍ ===
+        commissionCode: values.commissionCode,
+        // ==================
         password: values.password,
       });
     } catch (error) {
@@ -92,7 +100,6 @@ export default function RegisterPage() {
     }
   }
 
-  // The rest of the component remains the same
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <header className="bg-white shadow-sm">
@@ -229,14 +236,18 @@ export default function RegisterPage() {
 
                 <FormField
                   control={form.control}
-                  name="courseCode"
+                  // === CAMBIO AQUÍ ===
+                  name="commissionCode"
+                  // ==================
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Código de Curso</FormLabel>
+                      <FormLabel>Código de Comisión</FormLabel>
                       <FormControl>
                         <Input
+                          // === CAMBIO AQUÍ ===
                           placeholder="El docente debe darte este código"
                           {...field}
+                          // ==================
                         />
                       </FormControl>
                       <FormMessage />
@@ -292,12 +303,12 @@ export default function RegisterPage() {
             </Form>
 
             <div className="mt-6 text-sm">
-              ¿No tienes una cuenta?{" "}
+              ¿Ya tienes una cuenta?{" "}
               <Link
-                href="/register"
+                href="/login"
                 className="text-blue-600 font-medium hover:underline"
               >
-                Regístrate aquí
+                Inicia sesión aquí
               </Link>
             </div>
           </div>
