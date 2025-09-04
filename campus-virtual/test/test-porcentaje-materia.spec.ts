@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("http://localhost:3000/login");
   await page
     .getByRole("textbox", { name: "Correo Electrónico" })
-    .fill("valeria@etec.uba.ar");
+    .fill("lopez@etec.uba.ar");
   await page.getByRole("textbox", { name: "Contraseña" }).fill("valeria123");
   await page.getByRole("button", { name: "Iniciar Sesión" }).click();
   await page.waitForURL("http://localhost:3000/dashboard");

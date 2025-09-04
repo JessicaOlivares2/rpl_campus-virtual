@@ -12,19 +12,15 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Mis Cursos" })).toBeVisible({
     timeout: 10000,
   });
-});
-
-test("Al tocar una materia, el alumno es redirigido a la página de detalle y se puede ver los ejercicios", async ({
-  page,
-}) => {
-  await page
-    .getByRole("link", { name: "I Introducción a la Programación" })
-    .click();
+  //aca navega hacia la materia que seleccionamos
+  await page.getByRole("link", { name: "I Introducción a la" }).click();
 
   await page.waitForURL((url) =>
     url.pathname.includes("introducci%C3%B3n-a-la-programaci%C3%B3n")
   );
+});
 
+test("La sección de Unidades se pueden desplegar", async ({ page }) => {
   await expect(page.getByText("Introducción a la Programación")).toBeVisible();
   await expect(page.getByText("Guías de Ejercicios")).toBeVisible();
   await expect(page.getByText("Unidad 1: Conceptos Básicos")).toBeVisible();

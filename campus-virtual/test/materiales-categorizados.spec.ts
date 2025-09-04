@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("Al tocar una materia, el alumno es redirigido a la página de detalle y se puede ver los ejercicios", async ({
+test("Los materiales estan categorizados depediendo el tipo de archivo(pdf,links)", async ({
   page,
 }) => {
   await page
@@ -26,12 +26,12 @@ test("Al tocar una materia, el alumno es redirigido a la página de detalle y se
   );
 
   await expect(page.getByText("Introducción a la Programación")).toBeVisible();
-  await expect(page.getByText("Guías de Ejercicios")).toBeVisible();
+  await page.getByRole("button", { name: "Ver Materiales" }).click();
+  await expect(page.getByText("Materiales del Curso")).toBeVisible();
   await expect(page.getByText("Unidad 1: Conceptos Básicos")).toBeVisible();
-  await expect(page.getByRole("button", { name: "▼" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "▲" })).toBeHidden();
-  await page.getByRole("button", { name: "▼" }).click();
-  //tiene que aparecer los ejercicios
-  await expect(page.getByText("Hola Mundo con Python")).toBeVisible();
-  await expect(page.getByText("Variables y Tipos de Datos")).toBeVisible();
+  await expect(page.getByText("Archivos PDF")).toBeVisible();
+  await expect(page.getByText("Enlaces y Videos")).toBeVisible();
+  await expect(page.getByText("Guía de Sintaxis Básica")).toBeVisible();
+  await expect(page.getByText("Video: Tu primer programa")).toBeVisible();
+  await expect(page.getByText("Referencia en línea: Datos")).toBeVisible();
 });

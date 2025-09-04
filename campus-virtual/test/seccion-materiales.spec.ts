@@ -14,6 +14,16 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("El alumno puede ver la lista de sus materias", async ({ page }) => {
+test("El alumno puede acceder a la sección de materiales", async ({ page }) => {
+  await page
+    .getByRole("link", { name: "I Introducción a la Programación" })
+    .click();
+
+  await page.waitForURL((url) =>
+    url.pathname.includes("introducci%C3%B3n-a-la-programaci%C3%B3n")
+  );
+
   await expect(page.getByText("Introducción a la Programación")).toBeVisible();
+  await page.getByRole("button", { name: "Ver Materiales" }).click();
+  await expect(page.getByText("Materiales del Curso")).toBeVisible();
 });
