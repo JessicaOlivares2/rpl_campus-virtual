@@ -67,6 +67,7 @@ model Assignment {
   module      Module            @relation(fields: [moduleId], references: [id])
   type        String // 'Lesson', 'Quiz', 'Project'
   progress    StudentProgress[]
+  resources       Resource[]
 }
 
 model StudentProgress {
@@ -84,4 +85,13 @@ model StudentProgress {
 enum Role {
   STUDENT
   TEACHER
+}
+model Resource {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  type        String   // Ej: 'PDF', 'Link', 'Video'
+  url         String   // URL o ruta al archivo
+  assignmentId Int
+  assignment  Assignment @relation(fields: [assignmentId], references: [id])
 }

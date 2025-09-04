@@ -83,6 +83,7 @@ export default function RegisterPage() {
         commissionCode: values.commissionCode,
         // ==================
         password: values.password,
+        confirmPassword: ""
       });
     } catch (error) {
       if (error && (error as Error).message.includes("NEXT_REDIRECT")) {

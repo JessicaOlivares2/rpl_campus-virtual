@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
 
 export default async function CourseDetailPage({ params }: { params: { courseId: string; courseSlug: string } }) {
+  // Aquí obtienes el ID del estudiante de la sesión o del contexto de autenticación
   const studentId = 1;
 
   const course = await prisma.course.findUnique({
@@ -18,6 +19,7 @@ export default async function CourseDetailPage({ params }: { params: { courseId:
               progress: {
                 where: { studentId },
               },
+              resources: true, // ¡NUEVO! Incluye los recursos del ejercicio
             },
           },
         },
@@ -69,6 +71,45 @@ export default async function CourseDetailPage({ params }: { params: { courseId:
                             <span className="text-green-500">✅</span>
                           ) : (
                             <span className="text-gray-400"></span>
+                          )}
+                          
+                          {/* Sección de Recursos (NUEVO) */}
+                          {assignment.resources.length > 0 && (
+                            <div className="mt-4 border-t pt-4">
+                              <h4 className="text-sm font-bold text-gray-700 mb-2">Materiales:</h4>
+                              <div className="grid grid-cols-2 gap-2">
+                                {/* PDFs */}
+                                {assignment.resources.filter(r => r.type === 'PDF').length > 0 && (
+                                  <div>
+                                    <h5 className="text-xs font-semibold">PDFs:</h5>
+                                    <ul className="list-disc ml-4 text-sm text-gray-600">
+                                      {assignment.resources.filter(r => r.type === 'PDF').map(pdf => (
+                                        <li key={pdf.id}>
+                                          <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                            {pdf.title}
+                                          </a>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                {/* Enlaces y otros */}
+                                {assignment.resources.filter(r => r.type !== 'PDF').length > 0 && (
+                                  <div>
+                                    <h5 className="text-xs font-semibold">Enlaces:</h5>
+                                    <ul className="list-disc ml-4 text-sm text-gray-600">
+                                      {assignment.resources.filter(r => r.type !== 'PDF').map(link => (
+                                        <li key={link.id}>
+                                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                            {link.title} ({link.type})
+                                          </a>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </li>
                       ))}

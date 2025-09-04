@@ -1,5 +1,3 @@
-// prisma/seed.ts
-
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -8,11 +6,12 @@ const prisma = new PrismaClient();
 async function main() {
   // Limpiar la base de datos en el orden correcto
   await prisma.studentProgress.deleteMany();
+  await prisma.resource.deleteMany();
   await prisma.assignment.deleteMany();
   await prisma.module.deleteMany();
   await prisma.course.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.teacher.deleteMany(); // ¡Importante! Limpiar la tabla Teacher
+  await prisma.teacher.deleteMany();
   await prisma.commission.deleteMany();
 
   // 1. Crear comisiones de prueba
@@ -63,8 +62,29 @@ async function main() {
             title: 'Unidad 1: Ecuaciones',
             assignments: {
               create: [
-                { title: 'Ejercicios de Ecuaciones de Primer Grado', type: 'Lesson' },
-                { title: 'Guía de Problemas con Ecuaciones', type: 'Quiz' },
+                {
+                  title: 'Ejercicios de Ecuaciones de Primer Grado',
+                  type: 'Lesson',
+                  resources: {
+                    createMany: {
+                      data: [
+                        { title: 'Ejercicios Resueltos de Ecuaciones', type: 'PDF', url: 'https://example.com/matematicas/ejercicios-resueltos.pdf' },
+                        { title: 'Video Tutorial de Álgebra', type: 'Video', url: 'https://www.youtube.com/watch?v=tutorial-algebra' },
+                      ],
+                    },
+                  },
+                },
+                {
+                  title: 'Guía de Problemas con Ecuaciones',
+                  type: 'Quiz',
+                  resources: {
+                    createMany: {
+                      data: [
+                        { title: 'Guía de Estudio Adicional', type: 'PDF', url: 'https://example.com/matematicas/guia-adicional.pdf' },
+                      ],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -81,15 +101,37 @@ async function main() {
       commissions: {
         connect: [{ id: comisionB.id }],
       },
-      // Crear módulos y ejercicios anidados
+      // Crear módulos y ejercicios anidados con recursos
       modules: {
         create: [
           {
             title: 'Unidad 1: Conceptos Básicos',
             assignments: {
               create: [
-                { title: 'Hola Mundo con Python', type: 'Lesson' },
-                { title: 'Variables y Tipos de Datos', type: 'Lesson' },
+                {
+                  title: 'Hola Mundo con Python',
+                  type: 'Lesson',
+                  resources: {
+                    createMany: {
+                      data: [
+                        { title: 'Guía de Sintaxis Básica', type: 'PDF', url: 'https://example.com/programacion/guia-sintaxis.pdf' },
+                        { title: 'Video: Tu primer programa', type: 'Video', url: 'https://www.youtube.com/watch?v=primer-programa' },
+                      ],
+                    },
+                  },
+                },
+                {
+                  title: 'Variables y Tipos de Datos',
+                  type: 'Lesson',
+                  resources: {
+                    createMany: {
+                      data: [
+                        { title: 'Tabla de Tipos de Datos', type: 'PDF', url: 'https://example.com/programacion/tabla-tipos.pdf' },
+                        { title: 'Referencia en línea: Datos', type: 'Link', url: 'https://www.w3schools.com/python/python_datatypes.asp' },
+                      ],
+                    },
+                  },
+                },
               ],
             },
           },

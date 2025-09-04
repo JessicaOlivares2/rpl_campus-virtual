@@ -1,3 +1,5 @@
+// src/lib/actions.ts
+
 "use server";
 
 import { redirect } from "next/navigation";
@@ -8,7 +10,6 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 // Esquema de Zod para la validación de la entrada
-// CAMBIO 1: Renombrar y hacer requerido el campo de código
 const registerSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
   lastName: z.string().min(2, { message: "El apellido debe tener al menos 2 caracteres" }),
@@ -44,9 +45,9 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
       throw new Error("El email ya está registrado");
     }
 
-    // CAMBIO 2: Buscar la comisión por el código
-    const commission = await prisma.commission.findUnique({
-      where: { registrationCode: values.commissionCode },
+    // Buscar la comisión por el código, eliminando cualquier espacio en blanco
+    const commission = await prisma.commission.findFirst({
+      where: { registrationCode: values.commissionCode.trim() },
       include: {
         courses: true,
       },
@@ -67,21 +68,20 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
 
     const hashedPassword = await bcrypt.hash(values.password, 10);
 
-    // CAMBIO 3: Crear el usuario y conectarlo a la comisión y sus cursos
     await prisma.user.create({
       data: {
         name: values.name,
         lastName: values.lastName,
         email: values.email,
         DNI: values.DNI,
-        birthDate: birthDateObject, // Usamos el objeto de fecha válido
+        birthDate: birthDateObject,
         password: hashedPassword,
         role: "STUDENT",
         // Conecta el usuario a la comisión
         commissionId: commission.id,
         // Conecta el usuario a todos los cursos de esa comisión
         coursesJoined: {
-          connect: commission.courses.map((course) => ({ id: course.id })),
+          connect: commission.courses.map((course: { id: any; }) => ({ id: course.id })),
         },
       },
     });
@@ -99,7 +99,6 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
     throw new Error("Error al registrar el usuario");
   }
 }
-// (loginUser)
 
 export async function loginUser({
   email,
@@ -160,7 +159,8 @@ export async function logoutUser() {
   (await cookies()).delete("session");
   redirect("/login");
 }
-//ejercicios:
+
+// ejercicios:
 export async function updateStudentProgress(studentId: number, assignmentId: number) {
   try {
     const assignment = await prisma.assignment.findUnique({
