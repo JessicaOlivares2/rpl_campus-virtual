@@ -1,8 +1,5 @@
 // prisma/schema.prisma
 
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,80 +9,79 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enum para los roles de los usuarios
-enum Role {
-  STUDENT // Alumno
-  TEACHER // Docente
+model User {
+  id            Int               @id @default(autoincrement())
+  email         String            @unique
+  password      String
+  name          String
+  lastName      String
+  DNI           String
+  birthDate     DateTime
+  role          Role              @default(STUDENT)
+  commissionId  Int?
+  commission    Commission?       @relation(fields: [commissionId], references: [id])
+  coursesJoined Course[]
+  progresses    StudentProgress[]
 }
 
-// Nuevo modelo para las comisiones, que gestiona el código de registro
+model Teacher {
+  id        Int      @id @default(autoincrement())
+  name      String
+  lastName  String
+  email     String   @unique
+  courses   Course[]
+}
+
+model Course {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  teacherId   Int
+  teacher     Teacher      @relation(fields: [teacherId], references: [id])
+  commissions Commission[]
+  modules     Module[]
+  students    User[] // This is the missing field. It completes the many-to-many relationship with User.
+}
+
 model Commission {
   id               Int      @id @default(autoincrement())
-  name             String   // Por ejemplo: "3A" o "3B"
-  registrationCode String   @unique // El código que los alumnos usan para registrarse
-  students         User[]   // Lista de alumnos en esta comisión
-  courses          Course[] // Cursos asignados a esta comisión
+  name             String
+  registrationCode String   @unique
+  students         User[]
+  courses          Course[]
 }
 
-// Modelo principal para los usuarios de la plataforma
-model User {
-  id               Int          @id @default(autoincrement())
-  email            String       @unique
-  password         String       // Contraseña hasheada
-  
-  name             String?
-  lastName         String?
-  DNI              String?      @unique
-  birthDate        DateTime?
-
-  role             Role         @default(STUDENT)
-  coursesCreated   Course[]     @relation("CoursesTaught") // Cursos que un docente ha creado
-  
-  // Relación con el nuevo modelo de Comisión
-  commissionId     Int?
-  commission       Commission?  @relation(fields: [commissionId], references: [id])
-  
-  // La relación de alumnos a cursos ahora se maneja a través de la comisión
-  coursesJoined    Course[]     @relation("CoursesEnrolled")
-  
-  submissions      Submission[]
+model Module {
+  id          Int          @id @default(autoincrement())
+  title       String
+  courseId    Int
+  course      Course       @relation(fields: [courseId], references: [id])
+  assignments Assignment[]
 }
 
-// Modelo para los cursos
-model Course {
-  id               Int          @id @default(autoincrement())
-  title            String
-  description      String
-  teacherId        Int
-  teacher          User         @relation("CoursesTaught", fields: [teacherId], references: [id])
-  
-  // Relación con las comisiones
-  commissions      Commission[]
-  
-  // La relación de alumnos a cursos ahora se maneja a través de la comisión
-  students         User[]       @relation("CoursesEnrolled")
-
-  assignments      Assignment[] // Ejercicios en este curso
-}
-
-// Modelo para las tareas o asignaciones
 model Assignment {
-  id               Int          @id @default(autoincrement())
-  title            String
-  description      String
-  courseId         Int
-  course           Course       @relation(fields: [courseId], references: [id])
-  submissions      Submission[] // Relación con las entregas de los alumnos
+  id          Int               @id @default(autoincrement())
+  title       String
+  description String?
+  moduleId    Int
+  module      Module            @relation(fields: [moduleId], references: [id])
+  type        String // 'Lesson', 'Quiz', 'Project'
+  progress    StudentProgress[]
 }
 
-// Modelo para las entregas de los alumnos
-model Submission {
-  id               Int          @id @default(autoincrement())
-  submissionUrl    String       // URL de la entrega
-  submittedAt      DateTime     @default(now())
-  status           String?      // Por ejemplo: 'Completado', 'Pendiente', 'Calificado'
-  studentId        Int
-  student          User         @relation(fields: [studentId], references: [id])
-  assignmentId     Int
-  assignment       Assignment   @relation(fields: [assignmentId], references: [id])
+model StudentProgress {
+  id             Int       @id @default(autoincrement())
+  studentId      Int
+  assignmentId   Int
+  assignment     Assignment @relation(fields: [assignmentId], references: [id])
+  student        User      @relation(fields: [studentId], references: [id])
+  isCompleted    Boolean   @default(false)
+  completionDate DateTime?
+
+  @@unique([studentId, assignmentId])
+}
+
+enum Role {
+  STUDENT
+  TEACHER
 }

@@ -1,34 +1,53 @@
 // prisma/seed.ts
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  // Limpiar la base de datos en el orden correcto
+  await prisma.studentProgress.deleteMany();
+  await prisma.assignment.deleteMany();
+  await prisma.module.deleteMany();
+  await prisma.course.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.teacher.deleteMany(); // ¡Importante! Limpiar la tabla Teacher
+  await prisma.commission.deleteMany();
+
   // 1. Crear comisiones de prueba
   const comisionA = await prisma.commission.create({
-    data: { name: '3A', registrationCode: '3A-2024' },
+    data: { name: '3A', registrationCode: '3A-2025' },
   });
 
   const comisionB = await prisma.commission.create({
-    data: { name: '3B', registrationCode: '3B-2024' },
+    data: { name: '3B', registrationCode: '3B-2025' },
   });
 
-  // 2. Crear un usuario de prueba (docente)
-  const teacherUser = await prisma.user.create({
+  // 2. Crear un registro de docente en el modelo Teacher
+  const teacherUser = await prisma.teacher.create({
     data: {
       email: 'docente@etec.uba.ar',
-      password: await bcrypt.hash('teacher1234', 10),
       name: 'Docente',
       lastName: 'Ejemplo',
-      DNI: '98765432',
-      birthDate: new Date('1985-05-10'),
-      role: 'TEACHER',
     },
   });
 
-  // 3. Crear cursos y asignarlos a las comisiones
-  // El curso de Matemáticas es solo para la Comisión 3A
+  // 3. Crear un usuario de prueba (estudiante)
+  const studentUser = await prisma.user.create({
+    data: {
+      email: 'estudiante@etec.uba.ar',
+      password: await bcrypt.hash('student1234', 10),
+      name: 'Estudiante',
+      lastName: 'Prueba',
+      DNI: '12345678',
+      birthDate: new Date('2000-01-01'),
+      role: 'STUDENT',
+      commissionId: comisionA.id,
+    },
+  });
+
+  // 4. Crear cursos con sus módulos y ejercicios anidados
   const matematicas = await prisma.course.create({
     data: {
       title: 'Matemáticas Avanzadas',
@@ -37,10 +56,23 @@ async function main() {
       commissions: {
         connect: [{ id: comisionA.id }],
       },
+      // Crear módulos y ejercicios anidados
+      modules: {
+        create: [
+          {
+            title: 'Unidad 1: Ecuaciones',
+            assignments: {
+              create: [
+                { title: 'Ejercicios de Ecuaciones de Primer Grado', type: 'Lesson' },
+                { title: 'Guía de Problemas con Ecuaciones', type: 'Quiz' },
+              ],
+            },
+          },
+        ],
+      },
     },
   });
 
-  // El curso de Programación es solo para la Comisión 3B
   const programacion = await prisma.course.create({
     data: {
       title: 'Introducción a la Programación',
@@ -49,27 +81,24 @@ async function main() {
       commissions: {
         connect: [{ id: comisionB.id }],
       },
+      // Crear módulos y ejercicios anidados
+      modules: {
+        create: [
+          {
+            title: 'Unidad 1: Conceptos Básicos',
+            assignments: {
+              create: [
+                { title: 'Hola Mundo con Python', type: 'Lesson' },
+                { title: 'Variables y Tipos de Datos', type: 'Lesson' },
+              ],
+            },
+          },
+        ],
+      },
     },
   });
 
-  // 4. Crear ejercicios para los cursos
-  const matematicasAssignment1 = await prisma.assignment.create({
-    data: {
-      title: 'Guía de ejercicios 1',
-      description: 'Resolución de ecuaciones de primer grado.',
-      courseId: matematicas.id,
-    },
-  });
-
-  const programacionAssignment1 = await prisma.assignment.create({
-    data: {
-      title: 'Tarea 1: Hola Mundo',
-      description: 'Crea tu primer programa en Python.',
-      courseId: programacion.id,
-    },
-  });
-
-  console.log('Datos de prueba con comisiones creados exitosamente.');
+  console.log('Datos de prueba creados exitosamente.');
 }
 
 main()

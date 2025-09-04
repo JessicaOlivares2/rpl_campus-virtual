@@ -160,3 +160,42 @@ export async function logoutUser() {
   (await cookies()).delete("session");
   redirect("/login");
 }
+//ejercicios:
+export async function updateStudentProgress(studentId: number, assignmentId: number) {
+  try {
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: { module: { include: { course: true } } },
+    });
+
+    if (!assignment) {
+      throw new Error("Ejercicio no encontrado.");
+    }
+
+    await prisma.studentProgress.upsert({
+      where: {
+        studentId_assignmentId: {
+          studentId,
+          assignmentId,
+        },
+      },
+      update: {
+        isCompleted: true,
+        completionDate: new Date(),
+      },
+      create: {
+        studentId,
+        assignmentId,
+        isCompleted: true,
+        completionDate: new Date(),
+      },
+    });
+
+    revalidatePath(`/dashboard/${assignment.module.course.id}/course-slug`);
+    
+    return { success: true, message: "Ejercicio marcado como completado." };
+  } catch (error) {
+    console.error("Error al actualizar el progreso del estudiante:", error);
+    return { success: false, message: "Hubo un error al actualizar el progreso." };
+  }
+}

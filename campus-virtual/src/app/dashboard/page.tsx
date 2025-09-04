@@ -1,23 +1,32 @@
-// src/app/(dashboard)/dashboard/page.tsx
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/db';
 import Header from '@/components/ui/Header'; // Import the new Header component
 
 async function getCourseProgress(userId: number, courseId: number) {
+  // Corregido para contar los ejercicios a través del módulo
   const totalAssignments = await prisma.assignment.count({
-    where: { courseId },
+    where: {
+      module: {
+        courseId,
+      },
+    },
   });
 
   if (totalAssignments === 0) {
     return 0; // Evita la división por cero si no hay ejercicios
   }
 
-  const completedSubmissions = await prisma.submission.count({
+  // Corregido para buscar las entregas a través del módulo y el curso
+  const completedSubmissions = await prisma.studentProgress.count({
     where: {
       studentId: userId,
-      assignment: { courseId },
-      status: 'Completado', // Asume que tienes un estado de 'Completado' en tus entregas
+      assignment: {
+        module: {
+          courseId,
+        },
+      },
+      isCompleted: true,
     },
   });
 
@@ -33,12 +42,17 @@ export default async function DashboardPage() {
   const session = JSON.parse(sessionCookie.value);
   const userId = session.userId;
 
+  // Corregida la consulta para incluir assignments a través de modules
   const userWithCourses = await prisma.user.findUnique({
     where: { id: userId },
     include: {
       coursesJoined: {
         include: {
-          assignments: true, // Incluye los ejercicios para el conteo
+          modules: {
+            include: {
+              assignments: true,
+            },
+          },
         },
       },
     },
@@ -52,7 +66,7 @@ export default async function DashboardPage() {
   const enrolledCourses = userWithCourses.coursesJoined;
 
   return (
-       <div className="min-h-screen flex flex-col bg-gray-100">
+    <div className="min-h-screen flex flex-col bg-gray-100">
       <Header /> {/* Add the Header component here */}
       <main className="flex-1 p-8">
         <div className="container mx-auto">
