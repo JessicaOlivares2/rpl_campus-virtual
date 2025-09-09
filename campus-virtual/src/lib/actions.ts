@@ -108,25 +108,46 @@ export async function loginUser({
   password: string;
 }) {
   try {
-    const user = await prisma.user.findUnique({
+    let user = null;
+    let role = null;
+
+    // 1. Intentar encontrar al usuario como un DOCENTE
+    const teacher = await prisma.teacher.findUnique({
       where: { email },
     });
 
-    if (!user) {
-      throw new Error("Credenciales inválidas");
+    if (teacher) {
+      // Necesitas un campo `password` en tu modelo `Teacher`
+      const isPasswordValid = await bcrypt.compare(password, teacher.password);
+      if (!isPasswordValid) {
+        throw new Error("Credenciales inválidas");
+      }
+      user = teacher;
+      role = "TEACHER";
+    } else {
+      // 2. Si no es un docente, intentar encontrarlo como un ALUMNO
+      const student = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!student) {
+        throw new Error("Credenciales inválidas");
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, student.password);
+      if (!isPasswordValid) {
+        throw new Error("Credenciales inválidas");
+      }
+      user = student;
+      role = "STUDENT";
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      throw new Error("Credenciales inválidas");
-    }
-
-    // Configura la cookie de sesión
+    // 3. Configurar la cookie de sesión con el ID y el rol
     const session = {
       userId: user.id,
       name: user.name,
       email: user.email,
+      role: role, // Guarda el rol para futuras validaciones
     };
 
     (await cookies()).set("session", JSON.stringify(session), {
@@ -136,17 +157,15 @@ export async function loginUser({
       maxAge: 60 * 60 * 24 * 7, // 1 semana
     });
 
-    // Agrega la revalidación de la ruta para el dashboard
+    // Revalida la ruta del dashboard después del login
     revalidatePath("/dashboard");
 
+    // Redirige a la página principal del dashboard
     redirect("/dashboard");
   } catch (error) {
-    // Si el error es una redirección de Next.js, lo dejamos pasar.
     if (error && (error as Error).message.includes("NEXT_REDIRECT")) {
       throw error;
     }
-
-    // Si es un error de código, lo manejamos.
     console.error("Error en loginUser:", error);
     if (error instanceof Error) {
       throw new Error(error.message);
@@ -154,7 +173,6 @@ export async function loginUser({
     throw new Error("Error al iniciar sesión");
   }
 }
-
 export async function logoutUser() {
   (await cookies()).delete("session");
   redirect("/login");
@@ -197,5 +215,83 @@ export async function updateStudentProgress(studentId: number, assignmentId: num
   } catch (error) {
     console.error("Error al actualizar el progreso del estudiante:", error);
     return { success: false, message: "Hubo un error al actualizar el progreso." };
+  }
+}
+
+//Docente-crear curso deaa
+// ... (importaciones y demás código)
+
+export async function createCourse(formData: FormData) {
+  const subject = formData.get('subject') as string;
+  const commission = formData.get('commission') as string;
+  const generation = formData.get('generation') as string;
+  const description = formData.get('description') as string;
+  // Asumimos que tienes el ID del docente en la sesión.
+  const teacherId = 1;
+
+  if (!subject || !commission || !generation || !description) {
+    return { error: 'Todos los campos son obligatorios.' };
+  }
+  
+  try {
+    // 1. Encuentra la comisión y a todos sus estudiantes.
+    const commissionRecord = await prisma.commission.findFirst({
+      where: { name: commission },
+      include: {
+        students: true, // Incluye a los estudiantes de la comisión
+      },
+    });
+
+    if (!commissionRecord) {
+      return { error: 'La comisión seleccionada no existe.' };
+    }
+    
+    // 2. Crea el nuevo curso y lo conecta a la comisión.
+    const newCourse = await prisma.course.create({
+      data: {
+        title: `${subject}`,
+        description: description,
+        teacherId: teacherId,
+        commissions: {
+          connect: {
+            id: commissionRecord.id,
+          },
+        },
+        // Opcional: También puedes conectar a los estudiantes directamente aquí
+       students: {
+          connect: commissionRecord.students.map(student => ({ id: student.id })),
+        },
+      },
+    });
+
+    console.log('Curso creado con éxito:', newCourse);
+    return { success: true };
+  } catch (error) {
+    console.error('Error al crear el curso:', error);
+    return { error: 'Ocurrió un error al guardar el curso.' };
+  }
+}
+
+//Eliminar curso Docente prr
+export async function deleteCourse(formData: FormData) {
+  const courseId = formData.get('courseId') as string;
+
+  if (!courseId) {
+    return { error: 'ID del curso no proporcionado.' };
+  }
+
+  try {
+    // Elimina el curso de la base de datos
+    await prisma.course.delete({
+      where: {
+        id: parseInt(courseId),
+      },
+    });
+
+    console.log(`Curso con ID ${courseId} eliminado con éxito.`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error al eliminar el curso:', error);
+    return { error: 'Ocurrió un error al eliminar el curso.' };
   }
 }

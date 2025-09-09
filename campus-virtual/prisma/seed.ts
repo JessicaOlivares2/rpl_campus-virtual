@@ -24,13 +24,14 @@ async function main() {
   });
 
   // 2. Crear un registro de docente en el modelo Teacher
-  const teacherUser = await prisma.teacher.create({
-    data: {
-      email: 'docente@etec.uba.ar',
-      name: 'Docente',
-      lastName: 'Ejemplo',
-    },
-  });
+ const teacherUser = await prisma.teacher.create({
+  data: {
+    email: 'docente@etec.uba.ar',
+    password: await bcrypt.hash('docenteuba', 10), // ¡Agrega esta línea!
+    name: 'Docente',
+    lastName: 'Ejemplo',
+  },
+});
 
   // 3. Crear un usuario de prueba (estudiante)
   const studentUser = await prisma.user.create({

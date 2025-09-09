@@ -29,6 +29,7 @@ model Teacher {
   name      String
   lastName  String
   email     String   @unique
+  password  String   // ¡Agrega esta línea!
   courses   Course[]
 }
 
