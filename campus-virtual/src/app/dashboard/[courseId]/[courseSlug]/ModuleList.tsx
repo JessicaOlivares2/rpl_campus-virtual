@@ -21,12 +21,14 @@ interface ModuleListProps {
   modules: Module[];
   courseId: number;
   courseSlug: string;
+  isTeacher: boolean; // Prop para saber si el usuario es docente
 }
 
 export default function ModuleList({
   modules,
   courseId,
   courseSlug,
+  isTeacher,
 }: ModuleListProps) {
   const [openModules, setOpenModules] = useState<Record<number, boolean>>({});
 
@@ -75,6 +77,17 @@ export default function ModuleList({
           {openModules[module.id] && (
             <div className="mt-4">
               <ul className="space-y-2">
+                {/* Botón para crear nuevo ejercicio, solo si el usuario es docente */}
+                {isTeacher && (
+                  <li className="mb-4">
+                    <Link
+  href={`/dashboard/${courseId}/modules/${module.id}/assignments/crear`}
+  className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+>
+  + Crear Ejercicio
+</Link>
+                  </li>
+                )}
                 {module.assignments.map((assignment) => (
                   <li
                     key={assignment.id}

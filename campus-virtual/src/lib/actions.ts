@@ -29,6 +29,18 @@ const registerSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const moduleSchema = z.object({
+  title: z.string().min(1, "El título es obligatorio."),
+  courseId: z.string(),
+});
+
+const assignmentSchema = z.object({
+  title: z.string().min(1, "El título es obligatorio."),
+  description: z.string().optional(),
+  type: z.enum(["Lesson", "Quiz", "Project"]),
+  moduleId: z.string(),
+});
+
 // Función de utilidad para convertir la fecha de 'dd/mm/aaaa' a 'mm/dd/aaaa'
 function convertDate(dateString: string) {
   const [day, month, year] = dateString.split("/");
@@ -293,5 +305,93 @@ export async function deleteCourse(formData: FormData) {
   } catch (error) {
     console.error('Error al eliminar el curso:', error);
     return { error: 'Ocurrió un error al eliminar el curso.' };
+  }
+}
+
+//crear unidad /(docentre)
+export async function createModule(formData: FormData) {
+  const parsed = moduleSchema.safeParse({
+    title: formData.get("title"),
+    courseId: formData.get("courseId"),
+  });
+
+  if (!parsed.success) {
+    const flattenedErrors = parsed.error.flatten();
+    console.error(flattenedErrors.fieldErrors); 
+    return {
+      success: false,
+      errors: flattenedErrors.fieldErrors, 
+    };
+  }
+
+  const { title, courseId } = parsed.data;
+
+  try {
+    await prisma.module.create({
+      data: {
+        title,
+        courseId: parseInt(courseId),
+      },
+    });
+    revalidatePath(`/dashboard/cursos/${courseId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error al crear el módulo:", error);
+    return {
+      success: false,
+      error: "Error al crear el módulo. Inténtalo de nuevo.",
+    };
+  }
+}
+
+//crear ejercicie /(docente)
+export async function createAssignment(formData: FormData) {
+  const parsed = assignmentSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description"),
+    type: formData.get("type"),
+    moduleId: formData.get("moduleId"),
+  });
+
+  if (!parsed.success) {
+    const flattenedErrors = parsed.error.flatten();
+    return {
+      success: false,
+      errors: flattenedErrors.fieldErrors,
+    };
+  }
+
+  const { title, description, type, moduleId } = parsed.data;
+
+  try {
+    const newAssignment = await prisma.assignment.create({
+      data: {
+        title,
+        description,
+        type,
+        moduleId: parseInt(moduleId),
+      },
+    });
+
+    // Encontramos el ID del curso para revalidar el caché y redirigir
+    const course = await prisma.module.findUnique({
+      where: { id: parseInt(moduleId) },
+      select: { courseId: true }
+    });
+
+    if (course) {
+      revalidatePath(`/dashboard/cursos/${course.courseId}`);
+      redirect(`/dashboard/cursos/${course.courseId}`);
+    } else {
+      revalidatePath(`/dashboard`);
+    }
+
+    return { success: true }; // Esta línea no se alcanzará por el redirect
+  } catch (error) {
+    console.error("Error al crear la asignación:", error);
+    return {
+      success: false,
+      error: "Error al crear la asignación. Inténtalo de nuevo.",
+    };
   }
 }
