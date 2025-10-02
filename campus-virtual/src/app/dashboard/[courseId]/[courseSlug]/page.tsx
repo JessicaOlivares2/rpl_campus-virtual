@@ -1,4 +1,5 @@
 // src/app/(dashboard)/dashboard/[courseId]/[courseSlug]/page.tsx
+"use server"
 import { notFound, redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import Link from "next/link";
@@ -7,14 +8,19 @@ import { cookies } from "next/headers";
 import Header from "@/components/ui/Header";
 
 export default async function CourseDetailPage({
-  params,
+  params,
 }: {
-  params: { courseId: string; courseSlug: string };
+  params: { courseId: string; courseSlug: string };
 }) {
-  const sessionCookie = (await cookies()).get('session');
-  if (!sessionCookie) {
-    redirect('/login');
-  }
+  // LECTURA Y CONVERSIÓN DE PARAMS AL INICIO (CORRECTO)
+  const courseId = parseInt(params.courseId);
+
+
+  const sessionCookie = (await cookies()).get('session');
+
+  if (!sessionCookie) {
+    redirect('/login');
+  }
 
   const session = JSON.parse(sessionCookie.value);
   const userRole = session.role;
@@ -22,10 +28,10 @@ export default async function CourseDetailPage({
   
   const studentId = session.userId; // Obtenemos el ID del usuario logueado
 
-  const course = await prisma.course.findUnique({
-    where: {
-      id: parseInt(params.courseId),
-    },
+   const course = await prisma.course.findUnique({
+    where: {
+      id: courseId, 
+    },
     include: {
       modules: {
         include: {

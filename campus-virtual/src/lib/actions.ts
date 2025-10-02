@@ -9,36 +9,45 @@ import { z } from "zod";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Elimina caracteres no alfanuméricos
+    .replace(/[\s_-]+/g, '-') // Reemplaza espacios y guiones con un solo guión
+    .replace(/^-+|-+$/g, ''); // Elimina guiones al principio y al final
+}
+
 // Esquema de Zod para la validación de la entrada
 const registerSchema = z.object({
-  name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
-  lastName: z.string().min(2, { message: "El apellido debe tener al menos 2 caracteres" }),
-  email: z.string().email({ message: "Ingrese un email válido" }),
-  DNI: z.string().regex(/^\d{7,8}$/, {
-    message: "El DNI debe tener 7 u 8 dígitos sin puntos ni espacios",
-  }),
-  birthDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, {
-    message: "Formato de fecha inválido (dd/mm/aaaa)",
-  }),
-  commissionCode: z.string().min(1, { message: "El código de comisión es requerido" }),
-  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres" }),
-  confirmPassword: z.string(),
+  name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
+  lastName: z.string().min(2, { message: "El apellido debe tener al menos 2 caracteres" }),
+  email: z.string().email({ message: "Ingrese un email válido" }),
+  DNI: z.string().regex(/^\d{7,8}$/, {
+    message: "El DNI debe tener 7 u 8 dígitos sin puntos ni espacios",
+  }),
+  birthDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, {
+    message: "Formato de fecha inválido (dd/mm/aaaa)",
+  }),
+  commissionCode: z.string().min(1, { message: "El código de comisión es requerido" }),
+  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres" }),
+  confirmPassword: z.string(),
 })
 .refine((data) => data.password === data.confirmPassword, {
-  message: "Las contraseñas no coinciden",
-  path: ["confirmPassword"],
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
 });
 
 const moduleSchema = z.object({
-  title: z.string().min(1, "El título es obligatorio."),
-  courseId: z.string(),
+  title: z.string().min(1, "El título es obligatorio."),
+  courseId: z.string(),
 });
 
 const assignmentSchema = z.object({
-  title: z.string().min(1, "El título es obligatorio."),
-  description: z.string().optional(),
-  type: z.enum(["Lesson", "Quiz", "Project"]),
-  moduleId: z.string(),
+  title: z.string().min(1, "El título es obligatorio."),
+  description: z.string().optional(),
+  type: z.enum(["Lesson", "Quiz", "Project"]),
+  moduleId: z.string(),
 });
 
 // Función de utilidad para convertir la fecha de 'dd/mm/aaaa' a 'mm/dd/aaaa'
@@ -234,54 +243,61 @@ export async function updateStudentProgress(studentId: number, assignmentId: num
 // ... (importaciones y demás código)
 
 export async function createCourse(formData: FormData) {
-  const subject = formData.get('subject') as string;
-  const commission = formData.get('commission') as string;
-  const generation = formData.get('generation') as string;
-  const description = formData.get('description') as string;
-  // Asumimos que tienes el ID del docente en la sesión.
-  const teacherId = 1;
+  const subject = formData.get('subject') as string;
+  const commission = formData.get('commission') as string;
+  const generation = formData.get('generation') as string;
+  const description = formData.get('description') as string;
+  // Asumimos que tienes el ID del docente en la sesión.
+  const teacherId = 1;
 
-  if (!subject || !commission || !generation || !description) {
-    return { error: 'Todos los campos son obligatorios.' };
-  }
-  
-  try {
-    // 1. Encuentra la comisión y a todos sus estudiantes.
-    const commissionRecord = await prisma.commission.findFirst({
-      where: { name: commission },
-      include: {
-        students: true, // Incluye a los estudiantes de la comisión
-      },
-    });
+  if (!subject || !commission || !generation || !description) {
+    return { error: 'Todos los campos son obligatorios.' };
+  }
 
-    if (!commissionRecord) {
-      return { error: 'La comisión seleccionada no existe.' };
-    }
-    
-    // 2. Crea el nuevo curso y lo conecta a la comisión.
-    const newCourse = await prisma.course.create({
-      data: {
-        title: `${subject}`,
-        description: description,
-        teacherId: teacherId,
-        commissions: {
-          connect: {
-            id: commissionRecord.id,
-          },
-        },
-        // Opcional: También puedes conectar a los estudiantes directamente aquí
-       students: {
-          connect: commissionRecord.students.map(student => ({ id: student.id })),
-        },
-      },
-    });
+  // **********************************************
+  // 1. Genera el slug A PARTIR del título
+  // **********************************************
+  const generatedSlug = slugify(subject);
+  
+  try {
+    // 2. Encuentra la comisión y a todos sus estudiantes.
+    const commissionRecord = await prisma.commission.findFirst({
+      where: { name: commission },
+      include: {
+        students: true, // Incluye a los estudiantes de la comisión
+      },
+    });
 
-    console.log('Curso creado con éxito:', newCourse);
-    return { success: true };
-  } catch (error) {
-    console.error('Error al crear el curso:', error);
-    return { error: 'Ocurrió un error al guardar el curso.' };
-  }
+    if (!commissionRecord) {
+      return { error: 'La comisión seleccionada no existe.' };
+    }
+    
+    // 3. Crea el nuevo curso y lo conecta a la comisión.
+    const newCourse = await prisma.course.create({
+      data: {
+        title: `${subject}`,
+        slug: generatedSlug, // slug
+        description: description,
+        teacherId: teacherId,
+        commissions: {
+          connect: {
+            id: commissionRecord.id,
+          },
+        },
+        // Opcional: También puedes conectar a los estudiantes directamente aquí
+       students: {
+          connect: commissionRecord.students.map(student => ({ id: student.id })),
+        },
+      },
+    });
+
+    console.log('Curso creado con éxito:', newCourse);
+    revalidatePath("/dashboard/cursos");
+    return { success: true };
+  } catch (error) {
+    console.error('Error al crear el curso:', error);
+    return { error: 'Ocurrió un error al guardar el curso.' };
+  }
 }
 
 //Eliminar curso Docente prr
@@ -358,13 +374,15 @@ export async function createAssignment(formData: FormData) {
     return {
       success: false,
       errors: flattenedErrors.fieldErrors,
+      error: "Error de validación: Comprueba los campos obligatorios." // Añadir un mensaje general para el formulario
     };
   }
 
   const { title, description, type, moduleId } = parsed.data;
 
   try {
-    const newAssignment = await prisma.assignment.create({
+    // 1. Crear la Asignación
+    await prisma.assignment.create({
       data: {
         title,
         description,
@@ -373,21 +391,43 @@ export async function createAssignment(formData: FormData) {
       },
     });
 
-    // Encontramos el ID del curso para revalidar el caché y redirigir
-    const course = await prisma.module.findUnique({
+    // 2. CORRECCIÓN: Buscamos la relación completa para obtener el ID y el SLUG del curso
+    const moduleRecord = await prisma.module.findUnique({
       where: { id: parseInt(moduleId) },
-      select: { courseId: true }
+      select: { 
+        course: {
+          select: { 
+            id: true,  // El ID del curso (el número)
+            slug: true // El slug del curso (el texto)
+          }
+        }
+      }
     });
 
-    if (course) {
-      revalidatePath(`/dashboard/cursos/${course.courseId}`);
-      redirect(`/dashboard/cursos/${course.courseId}`);
+    const courseId = moduleRecord?.course?.id;
+    const courseSlug = moduleRecord?.course?.slug;
+
+
+    if (courseId && courseSlug) {
+      // 3. CORRECCIÓN: Construimos la ruta de redirección usando el ID y el SLUG
+      // Esto coincide con la estructura de carpetas: /dashboard/[courseId]/[courseSlug]
+      const correctPath = `/dashboard/${courseId}/${courseSlug}`;
+
+      revalidatePath(correctPath);
+      
+      // La redirección usa la ruta correcta
+      redirect(correctPath);
     } else {
+      // Si por alguna razón no se encuentra el curso, redirige al dashboard principal
       revalidatePath(`/dashboard`);
+      return { success: true }; 
+    }
+  } catch (error) {
+    // Manejar el error de redirección de Next.js
+    if (error && (error as Error).message.includes("NEXT_REDIRECT")) {
+        throw error;
     }
 
-    return { success: true }; // Esta línea no se alcanzará por el redirect
-  } catch (error) {
     console.error("Error al crear la asignación:", error);
     return {
       success: false,

@@ -1,3 +1,5 @@
+// src/app/dashboard/[courseId]/modules/[moduleId]/assignments/crear/page.tsx
+
 import Header from '@/components/ui/Header';
 import CreateAssignmentForm from '@/components/CreateAssignmentForm';
 import { notFound, redirect } from 'next/navigation';
@@ -23,14 +25,19 @@ export default async function CreateAssignmentPage({ params }: { params: { cours
     where: { id: moduleId },
     include: {
       course: {
-        select: { title: true }
+        // 🚨 MODIFICACIÓN: Seleccionamos el título Y el slug del curso
+        select: { title: true, slug: true } // Asumo que el campo se llama 'slug'
       }
     }
   });
   
-  if (!module) {
+  if (!module || !module.course.slug) {
+    // Si el módulo no existe o el curso no tiene slug, redirigir
     notFound();
   }
+
+  // 🚨 OBTENEMOS EL SLUG DEL CURSO
+  const courseSlug = module.course.slug; 
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
@@ -43,7 +50,8 @@ export default async function CreateAssignmentPage({ params }: { params: { cours
           </div>
           
           <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
-            <CreateAssignmentForm moduleId={moduleId} courseId={courseId} />
+            {/* 🚨 MODIFICACIÓN: Pasamos el nuevo prop courseSlug al formulario */}
+            <CreateAssignmentForm moduleId={moduleId} courseId={courseId} courseSlug={courseSlug} />
           </div>
         </div>
       </main>

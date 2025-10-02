@@ -7,23 +7,23 @@ import Link from 'next/link';
 
 interface CreateModuleFormProps {
   courseId: number;
+  courseSlug: string; // ¡Añadimos la propiedad courseSlug!
 }
 
-export default function CreateModuleForm({ courseId }: CreateModuleFormProps) {
+export default function CreateModuleForm({ courseId, courseSlug }: CreateModuleFormProps) {
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (formData: FormData) => {
-    // Llama a la acción de servidor y maneja el resultado
     const result = await createModule(formData);
 
     if (result.success) {
       setSuccessMessage("¡Unidad creada con éxito!");
       setErrors({});
-      // Redirige al usuario a la página del curso después de un breve retraso
       setTimeout(() => {
-        router.push(`/dashboard/${courseId}`);
+        // Usamos el courseId y el courseSlug para la redirección
+        router.push(`/dashboard/${courseId}/${courseSlug}`);
       }, 1500);
     } else {
       setSuccessMessage(null);
@@ -55,7 +55,8 @@ export default function CreateModuleForm({ courseId }: CreateModuleFormProps) {
       </div>
 
       <div className="flex justify-end space-x-4">
-        <Link href={`/dashboard/${courseId}`} className="px-4 py-2 text-gray-600 rounded-lg hover:bg-gray-200 transition">
+        {/* Usamos el courseId y el courseSlug para el Link */}
+        <Link href={`/dashboard/${courseId}/${courseSlug}`} className="px-4 py-2 text-gray-600 rounded-lg hover:bg-gray-200 transition">
           Cancelar
         </Link>
         <button type="submit" className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition">

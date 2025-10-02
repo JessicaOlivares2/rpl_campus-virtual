@@ -1,8 +1,8 @@
 import Header from '@/components/ui/Header';
+import CreateModuleForm from '@/components/CreateModuleForm';
 import { notFound, redirect } from 'next/navigation';
 import prisma from '@/lib/db';
 import { cookies } from 'next/headers';
-import CreateModuleForm from '@/components/CreateModuleForm'; 
 
 export default async function CreateModulePage({ params }: { params: { courseId: string } }) {
   const sessionCookie = (await cookies()).get('session');
@@ -17,9 +17,11 @@ export default async function CreateModulePage({ params }: { params: { courseId:
   }
   
   const courseId = parseInt(params.courseId);
+  
+  // ¡Ahora también obtenemos el 'slug' para poder redirigir correctamente!
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { title: true }
+    select: { title: true, slug: true }
   });
 
   if (!course) {
@@ -36,8 +38,8 @@ export default async function CreateModulePage({ params }: { params: { courseId:
           </div>
           
           <div className="bg-white p-8 rounded-lg shadow-md max-w-lg mx-auto">
-            {/* Renderiza el componente de cliente y le pasa el ID del curso */}
-            <CreateModuleForm courseId={courseId} />
+            {/* Le pasamos el 'courseId' y el 'courseSlug' al componente del formulario */}
+            <CreateModuleForm courseId={courseId} courseSlug={course.slug} />
           </div>
         </div>
       </main>

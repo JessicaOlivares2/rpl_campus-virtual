@@ -2,43 +2,39 @@
 
 import { createAssignment } from '@/lib/actions';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+// ✨ CORRECCIÓN: Añadimos courseSlug a las props
 interface CreateAssignmentFormProps {
   moduleId: number;
   courseId: number;
+  courseSlug: string; // Nuevo campo requerido
 }
 
-export default function CreateAssignmentForm({ moduleId, courseId }: CreateAssignmentFormProps) {
+// ✨ CORRECCIÓN: Recibimos courseSlug en los argumentos
+export default function CreateAssignmentForm({ moduleId, courseId, courseSlug }: CreateAssignmentFormProps) {
+  // Usaremos el estado para manejar los errores
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const router = useRouter();
-
+  
   const handleSubmit = async (formData: FormData) => {
-    // Llama a la acción de servidor y maneja el resultado
+    // Limpiamos errores previos
+    setErrors({});
+
     const result = await createAssignment(formData);
 
-    if (result.success) {
-      setSuccessMessage("¡Ejercicio creado con éxito!");
-      setErrors({});
-      // Redirige al usuario a la página del módulo después de un breve retraso
-      setTimeout(() => {
-        router.push(`/dashboard/cursos/${courseId}`);
-      }, 1500);
-    } else {
-      setSuccessMessage(null);
+    if (!result.success) {
       if (result.errors) {
         setErrors(result.errors);
+      } else if (result.error) {
+        setErrors({ general: [result.error] });
       } else {
-        setErrors({ general: [result.error || "Hubo un error desconocido."] });
+        setErrors({ general: ["Hubo un error desconocido al crear el ejercicio."] });
       }
     }
   };
 
   return (
     <form action={handleSubmit} className="space-y-6">
-      {successMessage && <div className="p-4 bg-green-100 text-green-700 rounded-md">{successMessage}</div>}
       {errors.general && <div className="p-4 bg-red-100 text-red-700 rounded-md">{errors.general[0]}</div>}
 
       <input type="hidden" name="moduleId" value={moduleId} />
@@ -82,7 +78,8 @@ export default function CreateAssignmentForm({ moduleId, courseId }: CreateAssig
       </div>
 
       <div className="flex justify-end space-x-4">
-        <Link href={`/dashboard/cursos/${courseId}`} className="px-4 py-2 text-gray-600 rounded-lg hover:bg-gray-200 transition">
+        {/* ✨ CORRECCIÓN: Usamos el courseSlug para crear la ruta completa y correcta */}
+        <Link href={`/dashboard/${courseId}/${courseSlug}`} className="px-4 py-2 text-gray-600 rounded-lg hover:bg-gray-200 transition">
           Cancelar
         </Link>
         <button type="submit" className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition">

@@ -29,13 +29,14 @@ model Teacher {
   name      String
   lastName  String
   email     String   @unique
-  password  String   // ¡Agrega esta línea!
+  password  String   
   courses   Course[]
 }
 
 model Course {
   id          Int          @id @default(autoincrement())
   title       String
+  slug         String 
   description String?
   teacherId   Int
   teacher     Teacher      @relation(fields: [teacherId], references: [id])
