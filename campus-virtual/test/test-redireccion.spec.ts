@@ -18,7 +18,7 @@ test("Al tocar una materia, el alumno es redirigido a la página de detalle y se
   page,
 }) => {
   await page
-    .getByRole("link", { name: "I Introducción a la Programación" })
+    .getByRole("link", { name: "Introducción a la Programación" })
     .click();
 
   await page.waitForURL((url) =>

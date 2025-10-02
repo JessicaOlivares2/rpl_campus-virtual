@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 
 test("El alumno puede acceder a la sección de materiales", async ({ page }) => {
   await page
-    .getByRole("link", { name: "I Introducción a la Programación" })
+    .getByRole("link", { name: "Introducción a la Programación" })
     .click();
 
   await page.waitForURL((url) =>

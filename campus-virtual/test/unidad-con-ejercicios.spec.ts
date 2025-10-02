@@ -13,8 +13,9 @@ test.beforeEach(async ({ page }) => {
     timeout: 10000,
   });
   //aca navega hacia la materia que seleccionamos
-  await page.getByRole("link", { name: "I Introducción a la" }).click();
-
+  await page
+    .getByRole("link", { name: "Introducción a la Programación" })
+    .click();
   await page.waitForURL((url) =>
     url.pathname.includes("introducci%C3%B3n-a-la-programaci%C3%B3n")
   );

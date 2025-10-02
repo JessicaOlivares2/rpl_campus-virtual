@@ -24,6 +24,6 @@ test("login exitoso y redirección a la página de mis cursos", async ({
 
   // 6. Verificar el subtítulo para confirmar la correcta carga de la página
   await expect(
-    page.getByText("Bienvenido a tu espacio de aprendizaje")
+    page.getByText("Bienvenido, aquí tienes tu progreso.")
   ).toBeVisible();
 });
