@@ -10,5 +10,5 @@ npm install
 npm run prisma:generate
 ## Comandos Para ejecutar la app:                       
 npm run dev
-## Comando para ejecutar los tests
+## En otra terminal en la carpeta campus-virtual ejecutar este comando para los tests
 npm run test
