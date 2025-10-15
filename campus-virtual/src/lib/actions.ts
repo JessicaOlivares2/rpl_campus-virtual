@@ -8,6 +8,10 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import fs from 'fs/promises';
+import path from 'path';
+
+const UPLOAD_DIR = path.join(process.cwd(), 'public', 'test-files'); 
 
 function slugify(text: string): string {
   return text
@@ -48,6 +52,8 @@ const assignmentSchema = z.object({
   description: z.string().optional(),
   type: z.enum(["Lesson", "Quiz", "Project"]),
   moduleId: z.string(),
+  testFile: z.instanceof(File, { message: "El archivo de prueba es obligatorio para ejercicios de código." }).optional(), // Hacemos opcional si no es tipo 'Quiz' o 'Project'
+
 });
 
 // Función de utilidad para convertir la fecha de 'dd/mm/aaaa' a 'mm/dd/aaaa'
@@ -362,76 +368,219 @@ export async function createModule(formData: FormData) {
 
 //crear ejercicie /(docente)
 export async function createAssignment(formData: FormData) {
-  const parsed = assignmentSchema.safeParse({
-    title: formData.get("title"),
-    description: formData.get("description"),
-    type: formData.get("type"),
-    moduleId: formData.get("moduleId"),
-  });
+  // 1. Parsed data con el campo File
+  const parsed = assignmentSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description"),
+    type: formData.get("type"),
+    moduleId: formData.get("moduleId"),
+    testFile: formData.get("testFile"), // Zod lo identificará como un objeto File
+  });
 
-  if (!parsed.success) {
-    const flattenedErrors = parsed.error.flatten();
-    return {
-      success: false,
-      errors: flattenedErrors.fieldErrors,
-      error: "Error de validación: Comprueba los campos obligatorios." // Añadir un mensaje general para el formulario
-    };
-  }
+  if (!parsed.success) {
+    const flattenedErrors = parsed.error.flatten();
+    return {
+      success: false,
+      errors: flattenedErrors.fieldErrors,
+      error: "Error de validación: Comprueba los campos obligatorios."
+    };
+  }
 
-  const { title, description, type, moduleId } = parsed.data;
+  const { title, description, type, moduleId, testFile } = parsed.data;
 
-  try {
-    // 1. Crear la Asignación
-    await prisma.assignment.create({
-      data: {
-        title,
-        description,
-        type,
-        moduleId: parseInt(moduleId),
-      },
-    });
+  // Validación lógica: Si es un ejercicio de código (Quiz/Project), debe tener un archivo no vacío
+  const isCodeAssignment = type === 'Quiz' || type === 'Project';
+  if (isCodeAssignment && (!testFile || testFile.size === 0)) {
+    return {
+      success: false,
+      errors: { testFile: ["Para ejercicios tipo Quiz o Project, el archivo de pruebas es obligatorio."] },
+      error: "Falta el archivo de pruebas requerido."
+    };
+  }
 
-    // 2. CORRECCIÓN: Buscamos la relación completa para obtener el ID y el SLUG del curso
-    const moduleRecord = await prisma.module.findUnique({
-      where: { id: parseInt(moduleId) },
-      select: { 
-        course: {
-          select: { 
-            id: true,  // El ID del curso (el número)
-            slug: true // El slug del curso (el texto)
-          }
-        }
-      }
-    });
+  let testFileStoragePath = null;
+  let testFileName = null;
+  
+  try {
+    // 2. Manejo y Guardado del Archivo (Si existe)
+    if (testFile && testFile.size > 0) {
+      await fs.mkdir(UPLOAD_DIR, { recursive: true });
 
-    const courseId = moduleRecord?.course?.id;
-    const courseSlug = moduleRecord?.course?.slug;
+      const fileExtension = path.extname(testFile.name);
+      // Creamos un nombre único para el archivo guardado
+      testFileName = `${slugify(title)}-${Date.now()}${fileExtension}`; 
+      testFileStoragePath = path.join(UPLOAD_DIR, testFileName);
+      
+      // Convertir File a Buffer y escribir en el disco
+      const bytes = await testFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      await fs.writeFile(testFileStoragePath, buffer);
+    }
+    
+    // 3. Crear la Asignación y el TestFile asociado
+    await prisma.assignment.create({
+      data: {
+        title,
+        description,
+        type,
+        moduleId: parseInt(moduleId),
+        // Conectar el TestFile si fue subido
+        ...(testFileStoragePath && {
+          testFiles: {
+            create: {
+              filename: testFile!.name,
+              storagePath: `/test-files/${testFileName}`, // Guardamos la ruta relativa
+            },
+          },
+        }),
+      },
+    });
+
+    // 4. Lógica de Redirección (igual que antes)
+    const moduleRecord = await prisma.module.findUnique({
+      where: { id: parseInt(moduleId) },
+      select: { 
+        course: {
+          select: { 
+            id: true,
+            slug: true 
+          }
+        }
+      }
+    });
+
+    const courseId = moduleRecord?.course?.id;
+    const courseSlug = moduleRecord?.course?.slug;
+
+    if (courseId && courseSlug) {
+      const correctPath = `/dashboard/${courseId}/${courseSlug}`;
+      revalidatePath(correctPath);
+      redirect(correctPath);
+    } else {
+      revalidatePath(`/dashboard`);
+      return { success: true };
+    }
+  } catch (error) {
+    if (error && (error as Error).message.includes("NEXT_REDIRECT")) {
+        throw error;
+    }
+    
+    // Manejo de error: Si la DB falla, limpiamos el archivo que ya habíamos guardado
+    if (testFileStoragePath) {
+        try { await fs.unlink(testFileStoragePath); } catch (e) { console.error("Fallo al limpiar el archivo:", e); }
+    }
+
+    console.error("Error al crear la asignación:", error);
+    return {
+      success: false,
+      error: "Error al crear la asignación. Inténtalo de nuevo.",
+    };
+  }
+}
 
 
-    if (courseId && courseSlug) {
-      // 3. CORRECCIÓN: Construimos la ruta de redirección usando el ID y el SLUG
-      // Esto coincide con la estructura de carpetas: /dashboard/[courseId]/[courseSlug]
-      const correctPath = `/dashboard/${courseId}/${courseSlug}`;
+// ========================================================================
+// ⭐ NUEVA FUNCIÓN: submitCode (Para el Alumno)
+// ========================================================================
 
-      revalidatePath(correctPath);
-      
-      // La redirección usa la ruta correcta
-      redirect(correctPath);
-    } else {
-      // Si por alguna razón no se encuentra el curso, redirige al dashboard principal
-      revalidatePath(`/dashboard`);
-      return { success: true }; 
+/**
+ * Simula la ejecución del código del alumno contra las pruebas del docente,
+ * guarda la Submission en la DB y devuelve el resultado.
+ * ⚠️ NOTA: Este es un placeholder de simulación. La implementación real
+ * requiere un entorno seguro (sandbox/Docker) para ejecutar código de usuario.
+ */
+export async function submitCode(studentId: number, assignmentId: number, code: string) {
+  // Lógica de simulación: Éxito si incluye la solución esperada, falla si incluye un error
+  const isSuccessful = code.includes("return a + b") && !code.includes("a * b"); 
+  const executionTimeMs = Math.floor(Math.random() * 2000) + 100; // Simula entre 100ms y 2100ms
+  
+  try {
+    // 1. Crear la Submission (Historial de Entrega)
+    const newSubmission = await prisma.submission.create({
+      data: {
+        studentId,
+        assignmentId,
+        codeSubmitted: code,
+        isSuccessful,
+        executionTimeMs,
+      },
+    });
+
+    // 2. Si es exitoso, marcar el Assignment como completado.
+    if (isSuccessful) {
+      await prisma.studentProgress.upsert({
+        where: {
+          studentId_assignmentId: {
+            studentId,
+            assignmentId,
+          },
+        },
+        update: {
+          isCompleted: true,
+          completionDate: new Date(),
+        },
+        create: {
+          studentId,
+          assignmentId,
+          isCompleted: true,
+          completionDate: new Date(),
+        },
+      });
+    }
+    
+    // 3. Devolver el resultado de la prueba Y la submission para actualizar el historial en el cliente
+    return { 
+        success: true,
+        passed: isSuccessful, 
+        message: isSuccessful ? `¡Prueba Superada! Tiempo: ${executionTimeMs}ms` : `Prueba Fallida. Revisa tu lógica.`,
+        submission: newSubmission,
+    };
+  } catch (error) {
+    console.error("Error al procesar la submission:", error);
+    return { 
+        success: false, 
+        passed: false,
+        message: "Error interno del servidor al procesar tu código." 
+    };
+  }
+}
+
+export async function deleteAssignment(assignmentId: number) {
+    // Nota: Deberías añadir aquí la verificación del rol TEACHER antes de proceder.
+
+    try {
+        // Usamos una transacción para asegurar que todas las eliminaciones ocurran o ninguna lo haga
+        await prisma.$transaction(async (tx) => {
+            
+            // 1. Eliminar archivos de prueba (TestFile)
+            await tx.testFile.deleteMany({
+                where: { assignmentId: assignmentId },
+            });
+
+            // 2. Eliminar historial de entregas (Submission)
+            await tx.submission.deleteMany({
+                where: { assignmentId: assignmentId },
+            });
+
+            // 3. Eliminar progreso del estudiante (StudentProgress)
+            await tx.studentProgress.deleteMany({
+                where: { assignmentId: assignmentId },
+            });
+
+            // 4. Finalmente, eliminar el Ejercicio
+            await tx.assignment.delete({
+                where: { id: assignmentId },
+            });
+        });
+
+        // ⭐ Importante: Revalidar la caché de la vista de la lista del curso/módulo.
+        // Asumiendo que la lista se ve en la ruta raíz del dashboard o similar.
+         revalidatePath(`/dashboard`, 'layout'); 
+
+        return { success: true, message: "Ejercicio eliminado correctamente." };
+
+    } catch (error) {
+        console.error("Error al eliminar el ejercicio:", error);
+        return { success: false, message: "Hubo un error al eliminar el ejercicio y sus datos asociados." };
     }
-  } catch (error) {
-    // Manejar el error de redirección de Next.js
-    if (error && (error as Error).message.includes("NEXT_REDIRECT")) {
-        throw error;
-    }
-
-    console.error("Error al crear la asignación:", error);
-    return {
-      success: false,
-      error: "Error al crear la asignación. Inténtalo de nuevo.",
-    };
-  }
 }

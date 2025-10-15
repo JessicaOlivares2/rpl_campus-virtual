@@ -34,7 +34,7 @@ export default function CreateAssignmentForm({ moduleId, courseId, courseSlug }:
   };
 
   return (
-    <form action={handleSubmit} className="space-y-6">
+    <form action={handleSubmit} className="space-y-6" encType="multipart/form-data">
       {errors.general && <div className="p-4 bg-red-100 text-red-700 rounded-md">{errors.general[0]}</div>}
 
       <input type="hidden" name="moduleId" value={moduleId} />
@@ -61,7 +61,19 @@ export default function CreateAssignmentForm({ moduleId, courseId, courseSlug }:
         ></textarea>
         {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description[0]}</p>}
       </div>
-
+        <div>
+        <label htmlFor="testFile" className="block text-sm font-medium text-gray-700">Archivo de Pruebas (.py)</label>
+        <input
+          type="file"
+          id="testFile"
+          name="testFile" // ¡IMPORTANTE! Usaremos este nombre en actions.ts
+          accept=".py" // Filtra a solo archivos Python
+          required={true} // Opcional, pero para ejercicios de código, es un requisito.
+          className="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+        />
+        {errors.testFile && <p className="text-red-500 text-sm mt-1">{errors.testFile[0]}</p>}
+        <p className="mt-1 text-xs text-gray-500">Sube el archivo Python que contiene los casos de prueba para el ejercicio.</p>
+      </div>
       <div>
         <label htmlFor="type" className="block text-sm font-medium text-gray-700">Tipo de Ejercicio</label>
         <select

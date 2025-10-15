@@ -22,6 +22,7 @@ model User {
   commission    Commission?       @relation(fields: [commissionId], references: [id])
   coursesJoined Course[]
   progresses    StudentProgress[]
+  submissions   Submission[]
 }
 
 model Teacher {
@@ -70,6 +71,30 @@ model Assignment {
   type        String // 'Lesson', 'Quiz', 'Project'
   progress    StudentProgress[]
   resources       Resource[]
+  testFiles   TestFile[]
+  submissions Submission[]
+}
+
+model TestFile {
+  id           Int      @id @default(autoincrement())
+  filename     String   // Nombre del archivo (ej: test_unitario_1.py)
+  storagePath  String   // Ruta donde se guarda el archivo en el servidor/S3
+  assignmentId Int
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+}
+
+model Submission {
+  id             Int       @id @default(autoincrement())
+  codeSubmitted  String    // El código fuente que el alumno envió
+  submittedAt    DateTime  @default(now())
+  isSuccessful   Boolean?  // Resultado final: true (Pasa) / false (Falla) / null (Pendiente)
+  executionTimeMs Int?     // Para medir el rendimiento (< 5 segundos)
+
+  studentId      Int
+  student        User      @relation(fields: [studentId], references: [id])
+
+  assignmentId   Int
+  assignment     Assignment @relation(fields: [assignmentId], references: [id])
 }
 
 model StudentProgress {

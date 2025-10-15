@@ -3,6 +3,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+// ⭐ Importar el componente de eliminación
+import DeleteAssignmentButton from "@/components/DeleteAssignmentButton"; 
 
 interface Assignment {
   id: number;
@@ -73,6 +75,7 @@ export default function ModuleList({
               </button>
             </div>
           </div>
+          
           {/* Conditionally render the exercises based on the state */}
           {openModules[module.id] && (
             <div className="mt-4">
@@ -81,38 +84,52 @@ export default function ModuleList({
                 {isTeacher && (
                   <li className="mb-4">
                     <Link
-  href={`/dashboard/${courseId}/modules/${module.id}/assignments/crear`}
-  className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
->
-  + Crear Ejercicio
-</Link>
+                      href={`/dashboard/${courseId}/${courseSlug}/modules/${module.id}/assignments/crear`}
+                      className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                    >
+                      + Crear Ejercicio
+                    </Link>
                   </li>
                 )}
+                
                 {module.assignments.map((assignment) => (
                   <li
                     key={assignment.id}
-                    className="flex items-center space-x-3"
+                    // ⭐ CLAVE: Usa justify-between para separar el contenido del botón
+                    className="flex items-center justify-between py-2 border-b last:border-b-0" 
                   >
-                    {assignment.type === "Lesson" && (
-                      <span className="text-2xl">📖</span>
-                    )}
-                    {assignment.type === "Quiz" && (
-                      <span className="text-2xl">📝</span>
-                    )}
-                    {assignment.type === "Project" && (
-                      <span className="text-2xl">✍️</span>
-                    )}
-                    <Link
-                      href={`/dashboard/${courseId}/${courseSlug}/${assignment.id}`}
-                      className="text-gray-700 hover:text-blue-600"
-                    >
-                      {assignment.title}
-                    </Link>
-                    {assignment.progress.length > 0 &&
-                    assignment.progress[0].isCompleted ? (
-                      <span className="text-green-500">✅</span>
-                    ) : (
-                      <span className="text-gray-400"></span>
+                    
+                    {/* Contenedor Izquierdo (Icono, Link, Checkmark) */}
+                    <div className="flex items-center space-x-3">
+                        {assignment.type === "Lesson" && (<span className="text-2xl">📖</span>)}
+                        {assignment.type === "Quiz" && (<span className="text-2xl">📝</span>)}
+                        {assignment.type === "Project" && (<span className="text-2xl">✍️</span>)}
+                        
+                        <Link
+                            href={`/dashboard/${courseId}/${courseSlug}/${assignment.id}`}
+                            className="text-gray-700 hover:text-blue-600 font-medium"
+                        >
+                            {assignment.title}
+                        </Link>
+                        
+                        {assignment.progress.length > 0 &&
+                        assignment.progress[0].isCompleted ? (
+                            <span className="text-green-500">✅</span>
+                        ) : (
+                            <span className="text-gray-400"></span>
+                        )}
+                    </div>
+                    
+                    {/* ⭐ Contenedor Derecho: Botón de Eliminar (SOLO PARA DOCENTES) */}
+                    {isTeacher && (
+                        <div className="flex items-center space-x-2">
+                            {/* Aquí puedes añadir otros botones de edición si los tienes */}
+                            
+                            <DeleteAssignmentButton 
+                                assignmentId={assignment.id}
+                                assignmentTitle={assignment.title}
+                            />
+                        </div>
                     )}
                   </li>
                 ))}
