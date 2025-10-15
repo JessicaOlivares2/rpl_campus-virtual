@@ -584,3 +584,33 @@ export async function deleteAssignment(assignmentId: number) {
         return { success: false, message: "Hubo un error al eliminar el ejercicio y sus datos asociados." };
     }
 }
+
+export async function deleteModule(moduleId: number) {
+    try {
+        // 1. Verificar si existen ejercicios asociados (Assignments)
+        const assignmentsCount = await prisma.assignment.count({
+            where: { moduleId: moduleId },
+        });
+
+        if (assignmentsCount > 0) {
+            return { 
+                success: false, 
+                message: "No se puede eliminar la unidad, tiene ejercicios asociados. Elimina todos los ejercicios primero." 
+            };
+        }
+
+        // 2. Si no hay ejercicios, se procede con la eliminación del Módulo
+        await prisma.module.delete({
+            where: { id: moduleId },
+        });
+
+        // 3. Revalidar la caché para actualizar la lista de unidades en el dashboard
+        revalidatePath(`/dashboard`, 'layout'); 
+
+        return { success: true, message: "Unidad eliminada correctamente." };
+
+    } catch (error) {
+        console.error("Error al eliminar la unidad:", error);
+        return { success: false, message: "Hubo un error al eliminar la unidad." };
+    }
+}

@@ -3,8 +3,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-// ⭐ Importar el componente de eliminación
+// Importar los componentes de eliminación
 import DeleteAssignmentButton from "@/components/DeleteAssignmentButton"; 
+import DeleteModuleButton from "@/components/DeleteModuleButton"; 
 
 interface Assignment {
   id: number;
@@ -53,11 +54,27 @@ export default function ModuleList({
     <ul className="space-y-6">
       {modules.map((module) => (
         <li key={module.id} className="border rounded-lg p-4 bg-gray-50">
+          
+          {/* ENCABEZADO DE LA UNIDAD */}
           <div
-            className="flex justify-between items-center cursor-pointer"
-            onClick={() => toggleModule(module.id)}
+            className="flex justify-between items-center" 
+            onClick={() => toggleModule(module.id)} 
           >
-            <h3 className="text-xl font-semibold">{module.title}</h3>
+            
+            {/* Contenedor del Título y Botones */}
+            <div className="flex items-center cursor-pointer">
+              <h3 className="text-xl font-semibold">{module.title}</h3>
+              
+              {/* BOTÓN DE ELIMINAR UNIDAD (SOLO DOCENTE) */}
+              {isTeacher && (
+                <DeleteModuleButton 
+                  moduleId={module.id}
+                  moduleTitle={module.title}
+                />
+              )}
+            </div>
+            
+            {/* Contenedor del Progreso y Flecha */}
             <div className="flex items-center">
               <span className="text-sm text-gray-500 mr-2">
                 Progreso:{" "}
@@ -76,7 +93,7 @@ export default function ModuleList({
             </div>
           </div>
           
-          {/* Conditionally render the exercises based on the state */}
+          {/* Contenido de la Unidad (Ejercicios) */}
           {openModules[module.id] && (
             <div className="mt-4">
               <ul className="space-y-2">
@@ -84,7 +101,9 @@ export default function ModuleList({
                 {isTeacher && (
                   <li className="mb-4">
                     <Link
-                      href={`/dashboard/${courseId}/${courseSlug}/modules/${module.id}/assignments/crear`}
+                      // ⭐ CORRECCIÓN CLAVE: Se eliminó ${courseSlug} para que la URL coincida con tu estructura de archivos.
+                      // La ruta ahora es: /dashboard/[courseId]/modules/[moduleId]/assignments/crear
+                      href={`/dashboard/${courseId}/modules/${module.id}/assignments/crear`}
                       className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
                     >
                       + Crear Ejercicio
@@ -95,12 +114,12 @@ export default function ModuleList({
                 {module.assignments.map((assignment) => (
                   <li
                     key={assignment.id}
-                    // ⭐ CLAVE: Usa justify-between para separar el contenido del botón
                     className="flex items-center justify-between py-2 border-b last:border-b-0" 
                   >
                     
                     {/* Contenedor Izquierdo (Icono, Link, Checkmark) */}
                     <div className="flex items-center space-x-3">
+                        {/* Iconos de tipo de ejercicio */}
                         {assignment.type === "Lesson" && (<span className="text-2xl">📖</span>)}
                         {assignment.type === "Quiz" && (<span className="text-2xl">📝</span>)}
                         {assignment.type === "Project" && (<span className="text-2xl">✍️</span>)}
@@ -112,6 +131,7 @@ export default function ModuleList({
                             {assignment.title}
                         </Link>
                         
+                        {/* Checkmark de completado */}
                         {assignment.progress.length > 0 &&
                         assignment.progress[0].isCompleted ? (
                             <span className="text-green-500">✅</span>
@@ -120,11 +140,9 @@ export default function ModuleList({
                         )}
                     </div>
                     
-                    {/* ⭐ Contenedor Derecho: Botón de Eliminar (SOLO PARA DOCENTES) */}
+                    {/* Contenedor Derecho: Botón de Eliminar Ejercicio (SOLO PARA DOCENTES) */}
                     {isTeacher && (
                         <div className="flex items-center space-x-2">
-                            {/* Aquí puedes añadir otros botones de edición si los tienes */}
-                            
                             <DeleteAssignmentButton 
                                 assignmentId={assignment.id}
                                 assignmentTitle={assignment.title}
