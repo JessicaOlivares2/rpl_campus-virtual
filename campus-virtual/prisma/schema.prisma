@@ -66,6 +66,7 @@ model Assignment {
   id          Int               @id @default(autoincrement())
   title       String
   description String?
+  slug          String            @unique // Debe seguir aquí
   moduleId    Int
   module      Module            @relation(fields: [moduleId], references: [id])
   type        String // 'Lesson', 'Quiz', 'Project'

@@ -11,7 +11,11 @@ const EJERCICIO_CONSIGNA = 'Consigna de prueba para eliminar';
 const TIPO_EJERCICIO = 'Lección';
 
 // ⭐ RUTA  DEL ARCHIVO .py (Debe existir) (CAMBIARLO SIEMPRE O hasta q lo ponga en una carpeta...)
-const TEST_FILE_PATH = '/home/etec/Descargas/test_suma_simple.py'; 
+//const TEST_FILE_PATH = '/home/etec/Descargas/test_suma_simple.py'; 
+
+const TEST_FILE_PATH = 'C:\\Users\\User\\Downloads\\test_suma_simple.py'; 
+
+
 
 test.beforeEach(async ({ page }) => {
     // Login como Docente

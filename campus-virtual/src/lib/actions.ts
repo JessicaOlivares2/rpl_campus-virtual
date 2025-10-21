@@ -10,10 +10,11 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import fs from 'fs/promises';
 import path from 'path';
+import { slugify } from '@/lib/utils';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'test-files'); 
 
-function slugify(text: string): string {
+/*function slugify(text: string): string {
   return text
     .toLowerCase()
     .trim()
@@ -21,7 +22,7 @@ function slugify(text: string): string {
     .replace(/[\s_-]+/g, '-') // Reemplaza espacios y guiones con un solo guión
     .replace(/^-+|-+$/g, ''); // Elimina guiones al principio y al final
 }
-
+*/
 // Esquema de Zod para la validación de la entrada
 const registerSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
@@ -369,6 +370,7 @@ export async function createModule(formData: FormData) {
 //crear ejercicie /(docente)
 export async function createAssignment(formData: FormData) {
   // 1. Parsed data con el campo File
+  // Asegúrate de que assignmentSchema.safeParse incluye todos los campos
   const parsed = assignmentSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description"),
@@ -387,6 +389,9 @@ export async function createAssignment(formData: FormData) {
   }
 
   const { title, description, type, moduleId, testFile } = parsed.data;
+  
+  // 💡 CREAR EL SLUG A PARTIR DEL TÍTULO ANTES DE USARLO
+  const slug = slugify(title);
 
   // Validación lógica: Si es un ejercicio de código (Quiz/Project), debe tener un archivo no vacío
   const isCodeAssignment = type === 'Quiz' || type === 'Project';
@@ -407,8 +412,8 @@ export async function createAssignment(formData: FormData) {
       await fs.mkdir(UPLOAD_DIR, { recursive: true });
 
       const fileExtension = path.extname(testFile.name);
-      // Creamos un nombre único para el archivo guardado
-      testFileName = `${slugify(title)}-${Date.now()}${fileExtension}`; 
+      // Usamos el SLUG en el nombre para una identificación fácil
+      testFileName = `${slug}-${Date.now()}${fileExtension}`; 
       testFileStoragePath = path.join(UPLOAD_DIR, testFileName);
       
       // Convertir File a Buffer y escribir en el disco
@@ -421,6 +426,7 @@ export async function createAssignment(formData: FormData) {
     await prisma.assignment.create({
       data: {
         title,
+        slug, // ⬅️ AÑADIDO: Campo 'slug' para satisfacer el esquema de Prisma
         description,
         type,
         moduleId: parseInt(moduleId),
@@ -436,7 +442,7 @@ export async function createAssignment(formData: FormData) {
       },
     });
 
-    // 4. Lógica de Redirección (igual que antes)
+    // 4. Lógica de Redirección
     const moduleRecord = await prisma.module.findUnique({
       where: { id: parseInt(moduleId) },
       select: { 
@@ -469,6 +475,9 @@ export async function createAssignment(formData: FormData) {
     if (testFileStoragePath) {
         try { await fs.unlink(testFileStoragePath); } catch (e) { console.error("Fallo al limpiar el archivo:", e); }
     }
+    
+    // 💡 IMPORTANTE: Si el slug ya existe, Prisma dará un error P2002.
+    // Podrías manejarlo aquí para dar un mensaje más específico.
 
     console.error("Error al crear la asignación:", error);
     return {
@@ -477,7 +486,6 @@ export async function createAssignment(formData: FormData) {
     };
   }
 }
-
 
 // ========================================================================
 // ⭐ NUEVA FUNCIÓN: submitCode (Para el Alumno)
