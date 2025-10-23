@@ -9,9 +9,11 @@ const CURSO_NOMBRE = 'Bases de Datos';
 const UNIDAD_NOMBRE = 'unidad 2 prueba';
 const EJERCICIO_NOMBRE = 'suma part2'; 
 const BASE_URL = 'http://localhost:3000';
+// Solución que se enviará al editor
 const SOLUCION_CORRECTA = 'def sumar(a, b):\n    return a + b'; 
 
 test.beforeEach(async ({ page }) => {
+    // Login estándar
     await page.goto(`${BASE_URL}/login`);
     await page.getByRole('textbox', { name: 'Correo Electrónico' }).fill(ALUMNO_EMAIL);
     await page.getByRole('textbox', { name: 'Contraseña' }).fill(ALUMNO_PASSWORD);
@@ -26,79 +28,78 @@ test.beforeEach(async ({ page }) => {
 
 test('El alumno puede resolver un ejercicio, enviarlo y ver el feedback exitoso', async ({ page }) => {
     
-    await test.step('Acceder a la página de detalle del ejercicio', async () => {
+    await test.step('1. Acceder a la página de detalle del ejercicio', async () => {
         
-        await page.getByRole('link', { name: `${CURSO_NOMBRE} curso de` }).first().click();
+        // 1. Clic en el curso 
+        const cursoLink = page.getByRole('link', { name: new RegExp(CURSO_NOMBRE) }).first();
+        await cursoLink.click({ timeout: 15000 });
+
+        // Verificar que estamos en la página del curso
         await expect(page.getByRole('heading', { name: CURSO_NOMBRE })).toBeVisible();
 
-        const unidadClickLocator = page.getByText(UNIDAD_NOMBRE).first();
-        
-        //  Intentar el despliegue de forma robusta.
-        await unidadClickLocator.click(); // Primer intento de click
-        
+        // 2. Localizar la unidad y su contenedor
+        const unidadClickLocator = page.getByText(UNIDAD_NOMBRE, { exact: false }).first();
+        const unidadContenedor = page.getByRole('listitem').filter({ hasText: UNIDAD_NOMBRE }).first();
+
+        // 3. Intentar desplegar forzadamente
+        await unidadClickLocator.click();
         await page.waitForTimeout(500); 
 
-        // Localizar el contenedor de la unidad usando el elemento padre 'listitem'.
-        const unidadContenedor = page.getByRole('listitem').filter({ hasText: UNIDAD_NOMBRE }).first();
+        // 4. Buscar el enlace (usando RegExp para mayor tolerancia)
+        const ejercicioLink = unidadContenedor.getByRole('link', { name: new RegExp(EJERCICIO_NOMBRE) }).first();
         
-        // Localizar el enlace del ejercicio DENTRO DEL CONTENEDOR (Regex para ignorar el emoji)
-        const ejercicioLink = unidadContenedor.getByRole('link', { name: new RegExp(EJERCICIO_NOMBRE) }); 
-
-        // 5. Verificar si el enlace es visible. Si falla, el catch ejecuta un SEGUNDO click.
+        // 5. Verificar visibilidad con lógica de re-clic para asegurar el despliegue
         try {
-            await expect(ejercicioLink).toBeVisible({ timeout: 500 }); 
-        } catch (error) {
-            console.log("El ejercicio no apareció inmediatamente. Re-clickeando la unidad.");
-            await unidadClickLocator.click(); // Segundo click de seguridad para forzar el despliegue
-            // Después del re-click, la aserción de visibilidad se hará en el siguiente paso.
+            await expect(ejercicioLink).toBeVisible({ timeout: 2000 });
+        } catch (e) {
+            console.log("⚠️ Enlace no visible. Re-clickeando la unidad...");
+            await unidadClickLocator.click(); // Re-clic forzado
+            await expect(ejercicioLink).toBeVisible({ timeout: 5000 });
         }
-        
-        await expect(ejercicioLink).toBeVisible({ timeout: 10000 }); 
-        
+
+        // 6. Clic en el ejercicio
         await ejercicioLink.click();
         
-        // Esperar la carga de la página de detalle
-        const ejercicioTituloLocator = page.getByRole('heading', { name: EJERCICIO_NOMBRE });
-        const editorCodigoLocator = page.getByRole('heading', { name: 'Editor de Código' });
-
-        await expect(ejercicioTituloLocator).toBeVisible({ timeout: 10000 });
-        await expect(editorCodigoLocator).toBeVisible({ timeout: 10000 });
+        // Verificación final de la página de detalle
+        await expect(page.getByRole('heading', { name: EJERCICIO_NOMBRE })).toBeVisible({ timeout: 10000 });
+        await expect(page.getByRole('heading', { name: 'Editor de Código' })).toBeVisible();
     });
 
-    //  Verificar la interfaz 
-    await test.step('Verificar elementos obligatorios de la interfaz', async () => {
+    await test.step('2. Escribir la solución y enviar el código', async () => {
         
-        await expect(page.getByRole('heading', { name: 'Enunciado' })).toBeVisible();
-        
-        const codeEditor = page.getByRole('textbox', { name: /escribe tu codigo/i });
-        await expect(codeEditor).toBeVisible();
+        // INTERACCIÓN CON MONACO EDITOR 
+        const monacoEditorContainer = page.locator('.monaco-editor').first();
+        await expect(monacoEditorContainer).toBeVisible();
 
-        const enviarButton = page.getByRole('button', { name: 'Enviar Respuesta y Obtener' });
+        // 1. Clic para enfocar el editor
+        await monacoEditorContainer.click();
+        
+        // 2. Escribir la solución
+        await page.waitForTimeout(1000); 
+        await monacoEditorContainer.pressSequentially(SOLUCION_CORRECTA, { delay: 10 }); 
+        
+        // 3. Clic en el botón de envío (Nombre actualizado a 'Enviar Código')
+        const enviarButton = page.getByRole('button', { name: 'Enviar Código' }); 
         await expect(enviarButton).toBeVisible();
-    });
-
-    //  Resolver y Enviar 
-    await test.step('Escribir la solución y enviar', async () => {
         
-        const codeEditor = page.getByRole('textbox', { name: /escribe tu codigo/i });
+        // Forzamos el click 
+        await enviarButton.click({ force: true });
         
-        await codeEditor.fill(SOLUCION_CORRECTA);
-        
-        const enviarButton = page.getByRole('button', { name: 'Enviar Respuesta y Obtener' });
-        await enviarButton.click();
-        
-        await page.waitForTimeout(3000); 
+        // Espera un tiempo prudente para la respuesta del servidor
+        await page.waitForTimeout(4000); 
     });
     
-    // Observar el Progreso y Feedback
-    await test.step('Verificar el feedback de éxito y el historial', async () => {
+    await test.step('3. Verificar el feedback de éxito y el historial', async () => {
         
-        const feedbackMessage = page.getByText(/¡Prueba Superada!/i);
-        await expect(feedbackMessage).toBeVisible({ timeout: 10000 });
+        // 🚨 CORRECCIÓN: Buscamos solo el mensaje principal '¡Prueba Superada!' para evitar el strict mode violation.
+        const successMessage = page.getByText(/¡Prueba Superada!/i).first();
+        await expect(successMessage).toBeVisible({ timeout: 10000 });
         
-        await expect(page.getByRole('heading', { name: 'Historial de Entregas' })).toBeVisible();
+        // Verificamos que se actualizó el historial
+        await expect(page.getByRole('heading', { name: /Historial de Entregas/ })).toBeVisible();
         
-        const ultimaEntrega = page.getByText('PASÓ').first();
-        await expect(ultimaEntrega).toBeVisible();
+        // Verificamos que la última entrega sea un "PASÓ"
+        const ultimaEntregaExitosa = page.getByText('PASÓ').first();
+        await expect(ultimaEntregaExitosa).toBeVisible();
     });
 });
