@@ -14,9 +14,9 @@ const TIPO_EJERCICIO = 'Lección';
 
 // Usamos el archivo 'test_suma_simple.py' 
 ///MODIFICAR ESTE PARRAFO DE CODIGO SIEMPRE (o hasta q lo mueva a una carperta pero meh)
-//const TEST_FILE_PATH = '/home/etec/Descargas/test_suma_simple.py'; 
+const TEST_FILE_PATH = '/home/etec/Descargas/test_suma_simple.py'; 
 
-const TEST_FILE_PATH = 'C:\\Users\\User\\Downloads\\test_suma_simple.py'; 
+//const TEST_FILE_PATH = 'C:\\Users\\User\\Downloads\\test_suma_simple.py'; 
 
 
 

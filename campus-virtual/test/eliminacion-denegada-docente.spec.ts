@@ -11,8 +11,8 @@ const UNIDAD_TITULO_COMPLEX = `Unidad-CON-EJ-${TIMESTAMP}`;
 const EJERCICIO_TITULO = `Ej-Bloqueo-${TIMESTAMP}`; 
 const TIPO_EJERCICIO = 'Lección';
 
-//const TEST_FILE_PATH = '/home/etec/Descargas/test_suma_simple.py'; 
-const TEST_FILE_PATH = 'C:\\Users\\User\\Downloads\\test_suma_simple.py'; 
+const TEST_FILE_PATH = '/home/etec/Descargas/test_suma_simple.py'; 
+//const TEST_FILE_PATH = 'C:\\Users\\User\\Downloads\\test_suma_simple.py'; 
 
 
 test.beforeEach(async ({ page }) => {
