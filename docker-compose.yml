@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # -----------------------------------------------
+  # 1. CAMPUS VIRTUAL RPL (Tu proyecto - Jessi)
+  # -----------------------------------------------
+  campus-rpl:
+    build: ./campus-virtual
+    container_name: campus_rpl_lms
+    # Tu app en 8080
+    ports:
+      - "8080:3000"  
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL="mysql://moodleuser:moodlepassword@moodle-db:3306/campus_db"  
+
+    volumes:
+      - campus_data:/app/prisma 
+    restart: always
+
+  # -----------------------------------------------
+  # 2. MOODLE (LMS Requerido - Usa MySQL)
+  # -----------------------------------------------
+  moodle-db:
+    image: mysql:8.0
+    container_name: moodle_mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: moodlerootpassword
+      MYSQL_DATABASE: moodle
+      MYSQL_USER: moodleuser
+      MYSQL_PASSWORD: moodlepassword
+    volumes:
+      - moodle_db_data:/var/lib/mysql
+
+  moodle-app:
+    image: bitnami/moodle:latest 
+    container_name: moodle_app_lms
+    restart: always
+    # Moodle en 8081
+    ports:
+      - "8081:8080" 
+    depends_on: [moodle-db]
+    environment:
+      MOODLE_DATABASE_HOST: moodle-db
+      MOODLE_DATABASE_USER: moodleuser
+      MOODLE_DATABASE_PASSWORD: moodlepassword
+      MOODLE_DATABASE_NAME: moodle
+      MOODLE_HOST: http://10.56.2.16:8081 
+    volumes:
+      - moodle_data:/bitnami/moodle
+      
+# Definición de Volúmenes (sin cambios)
+volumes:
+  campus_data:
+  moodle_db_data:
+  moodle_data:
