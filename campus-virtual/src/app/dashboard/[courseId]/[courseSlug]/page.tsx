@@ -1,4 +1,3 @@
-// src/app/(dashboard)/dashboard/[courseId]/[courseSlug]/page.tsx
 "use server"
 import { notFound, redirect } from "next/navigation";
 import prisma from "@/lib/db";
@@ -8,30 +7,31 @@ import { cookies } from "next/headers";
 import Header from "@/components/ui/Header";
 
 export default async function CourseDetailPage({
-  params,
+  params,
 }: {
-  params: { courseId: string; courseSlug: string };
+  params: { courseId: string; courseSlug: string };
 }) {
-  // LECTURA Y CONVERSIÓN DE PARAMS AL INICIO (CORRECTO)
-  const courseId = parseInt(params.courseId);
+  // LECTURA Y CONVERSIÓN DE PARAMS AL INICIO (CORRECTO)
+  const courseId = parseInt(params.courseId);
 
 
-  const sessionCookie = (await cookies()).get('session');
+  const sessionCookie = (await cookies()).get('session');
 
-  if (!sessionCookie) {
-    redirect('/login');
-  }
+  if (!sessionCookie) {
+    redirect('/login');
+  }
 
   const session = JSON.parse(sessionCookie.value);
+  // NOTA: Asumo que el rol "TEACHER" en la sesión es consistente con el enum 'Role'
   const userRole = session.role;
   const isTeacher = userRole === "TEACHER";
   
   const studentId = session.userId; // Obtenemos el ID del usuario logueado
 
-   const course = await prisma.course.findUnique({
-    where: {
-      id: courseId, 
-    },
+    const course = await prisma.course.findUnique({
+    where: {
+      id: courseId, 
+    },
     include: {
       modules: {
         include: {
@@ -55,7 +55,7 @@ export default async function CourseDetailPage({
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
-      <Header /> {/* Agregué el componente Header que falta */}
+      <Header /> 
       <div className="container mx-auto">
         <div className="bg-blue-800 text-white p-8 rounded-lg shadow-md mb-8">
           <h1 className="text-4xl font-bold">{course.title}</h1>
@@ -63,14 +63,38 @@ export default async function CourseDetailPage({
           <p className="mt-4 text-sm text-blue-300">
             Docente: {course.teacher.name} {course.teacher.lastName}
           </p>
-          <Link
-            href={`/dashboard/${course.id}/${params.courseSlug}/materiales`}
-          >
-            <button className="mt-4 px-4 py-2 bg-white text-blue-800 font-bold rounded-lg shadow-md hover:bg-gray-100 transition">
-              Ver Materiales
-            </button>
-          </Link>
+          
+          {/* 🚨 BLOQUE DE BOTONES PARA EL DOCENTE/ALUMNO 🚨 */}
+          <div className="mt-6 flex space-x-4">
+            
+            {/* Botón: Ver Materiales (General) */}
+            <Link
+              href={`/dashboard/${course.id}/${params.courseSlug}/materiales`}
+              passHref
+            >
+              <button className="px-4 py-2 bg-white text-blue-800 font-bold rounded-lg shadow-md hover:bg-gray-100 transition">
+                Ver Materiales
+              </button>
+            </Link>
+
+            {/* Botón CONDICIONAL: Historial de Entregas (Solo Docente) */}
+            {isTeacher && (
+              <Link 
+                // Esta es la nueva ruta que creamos
+                href={`/dashboard/${course.id}/${params.courseSlug}/entregas`}
+                passHref
+              >
+                <button className="px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition">
+                  Historial de Entregas
+                </button>
+              </Link>
+            )}
+            
+          </div>
+          {/* ---------------------------------------------------- */}
+          
         </div>
+        
         <div className="bg-white p-8 rounded-lg shadow-md">
           <h2 className="text-2xl font-bold mb-6">Guías de Ejercicios</h2>
           {isTeacher && (

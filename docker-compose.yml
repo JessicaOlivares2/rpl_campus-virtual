@@ -7,19 +7,39 @@ services:
   campus-rpl:
     build: ./campus-virtual
     container_name: campus_rpl_lms
-    # Tu app en 8080
     ports:
-      - "8080:3000"  
+      - "8080:3000" 
     environment:
       - NODE_ENV=production
-      - DATABASE_URL="mysql://moodleuser:moodlepassword@moodle-db:3306/campus_db"  
-
+      # ✅ CORREGIDO: Apuntamos al nuevo servicio 'prisma-db'
+      - DATABASE_URL="mysql://prismauser:prismapassword@prisma-db:3306/campus_rpl_db" 
+    # Depende de la nueva DB de Prisma
+    depends_on: [prisma-db, moodle-app] 
     volumes:
       - campus_data:/app/prisma 
     restart: always
 
   # -----------------------------------------------
-  # 2. MOODLE (LMS Requerido - Usa MySQL)
+  # 2. BASE DE DATOS DEDICADA PARA PRISMA/NEXT.JS
+  # -----------------------------------------------
+  prisma-db:
+    image: mysql:8.0
+    container_name: prisma_mysql_db
+    ports:
+      - "3306:3306"
+    restart: always
+    environment:
+      # 🚨 Credenciales que debe usar el DATABASE_URL de Next.js
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: campus_rpl_db # Nombre de la DB para tu app
+      MYSQL_USER: prismauser
+      MYSQL_PASSWORD: prismapassword
+    # No es necesario exponer el puerto 3306 al host, solo a la red Docker
+    volumes:
+      - prisma_db_data:/var/lib/mysql
+
+  # -----------------------------------------------
+  # 3. MOODLE (LMS Requerido - Sin Cambios)
   # -----------------------------------------------
   moodle-db:
     image: mysql:8.0
@@ -37,7 +57,6 @@ services:
     image: bitnami/moodle:latest 
     container_name: moodle_app_lms
     restart: always
-    # Moodle en 8081
     ports:
       - "8081:8080" 
     depends_on: [moodle-db]
@@ -50,8 +69,9 @@ services:
     volumes:
       - moodle_data:/bitnami/moodle
       
-# Definición de Volúmenes (sin cambios)
+# Definición de Volúmenes (Añadimos uno nuevo para Prisma)
 volumes:
   campus_data:
   moodle_db_data:
   moodle_data:
+  prisma_db_data: # ✅ Nuevo volumen para la DB de Prisma

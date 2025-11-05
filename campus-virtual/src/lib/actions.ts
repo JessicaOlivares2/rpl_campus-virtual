@@ -622,3 +622,53 @@ export async function deleteModule(moduleId: number) {
         return { success: false, message: "Hubo un error al eliminar la unidad." };
     }
 }
+
+
+//////////
+interface ReviewData {
+    submissionId: number;
+    comment: string;
+    status: 'APPROVED' | 'REJECTED' | 'PENDING';
+    courseId: string;
+    courseSlug: string;
+}
+
+/**
+ * Función que actualiza el estado (isSuccessful) y el comentario (docenteComment) de una Submission.
+ * @param data Datos de la revisión enviados desde el frontend.
+ * @returns Un objeto con éxito o error.
+ */
+export async function saveDocenteReview(data: ReviewData) {
+    // 1. Convertir el estado de string (frontend) a boolean/null (Prisma)
+    let isSuccessful: boolean | null;
+    if (data.status === 'APPROVED') {
+        isSuccessful = true;
+    } else if (data.status === 'REJECTED') {
+        isSuccessful = false;
+    } else {
+        isSuccessful = null; // PENDING
+    }
+
+    try {
+        // 2. Actualizar la Submission en la base de datos
+        await prisma.submission.update({
+            where: {
+                id: data.submissionId,
+            },
+            data: {
+                isSuccessful: isSuccessful, // Actualiza el estado de la calificación
+                docenteComment: data.comment, // Asumo que este campo existe en tu modelo Submission
+            },
+        });
+
+        // 3. Revalidar la página del historial de entregas para que el cambio se refleje
+        // Esto obliga a Next.js a refrescar la tabla después de guardar.
+        revalidatePath(`/dashboard/${data.courseId}/${data.courseSlug}/entregas`);
+
+        return { success: true, message: "Revisión guardada exitosamente." };
+
+    } catch (error) {
+        console.error("Error al guardar la revisión del docente:", error);
+        return { success: false, message: "Error en el servidor al guardar la revisión." };
+    }
+}
