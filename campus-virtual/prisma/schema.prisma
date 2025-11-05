@@ -2,7 +2,8 @@
 
 generator client {
   provider = "prisma-client-js"
-binaryTargets   = ["native", "debian-openssl-1.1.x","rhel-openssl-1.0.x"]
+  // Esto es lo que Prisma necesita en tu VM
+  binaryTargets   = ["native", "debian-openssl-1.1.x"] 
 }
 
 datasource db {
@@ -91,7 +92,7 @@ model Submission {
   submittedAt    DateTime  @default(now())
   isSuccessful   Boolean?  // Resultado final: true (Pasa) / false (Falla) / null (Pendiente)
   executionTimeMs Int?     // Para medir el rendimiento (< 5 segundos)
-  //docenteComment   String?  @db.Text
+  docenteComment   String?  @db.Text
   studentId      Int
   student        User      @relation(fields: [studentId], references: [id])
 
