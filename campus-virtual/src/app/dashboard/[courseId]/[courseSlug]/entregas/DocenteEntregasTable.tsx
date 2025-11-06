@@ -1,87 +1,134 @@
-import Link from 'next/link';
+'use client';
 
-// Definición de tipos basada en la consulta de Prisma de 'page.tsx'
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+// --- Tipos ---
 interface EntregaData {
-    id: number; // ID de la Submission, crucial para la acción 'Revisar'
-    submittedAt: Date;
-    isSuccessful: boolean | null; // true (Aprobado), false (Desaprobado), null (Pendiente)
-    student: {
-        name: string;
-        lastName: string;
-    };
-    assignment: {
-        title: string;
-    };
+  id: number;
+  submittedAt: Date;
+  isSuccessful: boolean | null;
+  student: {
+    name: string;
+    lastName: string;
+  };
+  assignment: {
+    title: string;
+  };
 }
 
 interface DocenteEntregasTableProps {
-    entregas: EntregaData[];
-    courseId: string;
-    courseSlug: string; // Necesario para construir el Link de Revisión (Correcto)
+  entregas: EntregaData[];
+  courseId: string;
+  courseSlug: string;
 }
 
-// Función para determinar el estado visual basado en isSuccessful
+// --- Estado visual según resultado ---
 const getEstado = (isSuccessful: boolean | null) => {
-    if (isSuccessful === true) return { text: 'Aprobado', color: 'text-green-600' };
-    if (isSuccessful === false) return { text: 'Desaprobado', color: 'text-red-600' };
-    return { text: 'Pendiente de Revisión', color: 'text-orange-600' };
+  if (isSuccessful === true) return { text: 'Aprobado', color: 'text-green-600 bg-green-50 border-green-200' };
+  if (isSuccessful === false) return { text: 'Desaprobado', color: 'text-red-600 bg-red-50 border-red-200' };
+  return { text: 'Pendiente', color: 'text-orange-600 bg-orange-50 border-orange-200' };
 };
 
-// 🚨 CORRECCIÓN: Agregar 'courseSlug' a la desestructuración de las props.
+// --- Componente principal ---
 export function DocenteEntregasTable({ entregas, courseId, courseSlug }: DocenteEntregasTableProps) {
-  
-    if (entregas.length === 0) {
-        return <p className="text-gray-500 p-4">No hay entregas pendientes o registradas para este curso.</p>;
-    }
-    
+  const router = useRouter();
+
+  // Si no hay entregas
+  if (entregas.length === 0) {
     return (
-        // La tabla que Playwright validará (clase 'deliveries-table' o similar)
-        <table className="deliveries-table min-w-full bg-white border border-gray-200 rounded-lg overflow-hidden shadow">
-            <thead>
-                <tr className="bg-gray-100 text-left text-sm font-semibold text-gray-700">
-                    <th className="py-3 px-4 border-b">Alumno</th> 
-                    <th className="py-3 px-4 border-b">Ejercicio</th>
-                    <th className="py-3 px-4 border-b">Fecha de Entrega</th>
-                    <th className="py-3 px-4 border-b">Estado</th>
-                    <th className="py-3 px-4 border-b">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {entregas.map((entrega) => {
-                    const estado = getEstado(entrega.isSuccessful);
-                    return (
-                        <tr key={entrega.id} className="border-t hover:bg-gray-50 text-sm">
-                            {/* 1. Alumno */}
-                            <td className="py-3 px-4">{entrega.student.lastName}, {entrega.student.name}</td>
-                            
-                            {/* 2. Ejercicio */}
-                            <td className="py-3 px-4">{entrega.assignment.title}</td>
-                            
-                            {/* 3. Fecha de Entrega */}
-                            <td className="py-3 px-4">
-                                {new Date(entrega.submittedAt).toLocaleDateString()} {new Date(entrega.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </td>
-                            
-                            {/* 4. Estado del Ejercicio */}
-                            <td className={`py-3 px-4 font-bold ${estado.color}`}>
-                                {estado.text}
-                            </td>
-                            
-                            {/* 5. Acciones: Botón Revisar */}
-                            <td className="py-3 px-4">
-                                {/* Esta URL es la que te llevará a la nueva página de detalle */}
-                                <Link 
-                                    // Uso de courseSlug ahora es válido
-                        href={`/dashboard/${courseId}/${courseSlug}/entregas/${entrega.id}`}                    
-                className="text-indigo-600 hover:text-indigo-900 font-medium"
-                                >
-                                    Revisar
-                                </Link>
-                            </td>
-                        </tr>
-                    );
-                })}
-            </tbody>
-        </table>
+      <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-md border border-gray-200 p-8 mt-8">
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-medium">Volver atrás</span>
+          </button>
+
+          <h2 className="text-2xl font-semibold text-gray-800">Entregas del curso</h2>
+        </div>
+
+        <p className="text-gray-500 text-center py-10">
+          No hay entregas pendientes o registradas para este curso.
+        </p>
+      </div>
     );
+  }
+
+  // Si hay entregas
+  return (
+    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-lg border border-gray-200 p-8 mt-8">
+      {/* --- ENCABEZADO + BOTÓN ATRÁS --- */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+        
+
+        <h2 className="text-2xl font-semibold text-gray-800 text-center sm:text-right">
+          📚 Entregas del curso
+        </h2>
+      </div>
+
+      {/* --- TABLA DE ENTREGAS --- */}
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="min-w-full bg-white text-sm">
+          <thead>
+            <tr className="bg-gray-100 text-left text-sm font-semibold text-gray-700">
+              <th className="py-3 px-4 border-b">Alumno</th>
+              <th className="py-3 px-4 border-b">Ejercicio</th>
+              <th className="py-3 px-4 border-b">Fecha de Entrega</th>
+              <th className="py-3 px-4 border-b">Estado</th>
+              <th className="py-3 px-4 border-b text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entregas.map((entrega) => {
+              const estado = getEstado(entrega.isSuccessful);
+              return (
+                <tr key={entrega.id} className="border-t hover:bg-gray-50 transition-colors">
+                  {/* Alumno */}
+                  <td className="py-3 px-4">{entrega.student.lastName}, {entrega.student.name}</td>
+
+                  {/* Ejercicio */}
+                  <td className="py-3 px-4">{entrega.assignment.title}</td>
+
+                  {/* Fecha */}
+                  <td className="py-3 px-4 text-gray-600">
+                    {new Date(entrega.submittedAt).toLocaleDateString()} {' '}
+                    {new Date(entrega.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </td>
+
+                  {/* Estado */}
+                  <td className="py-3 px-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${estado.color}`}>
+                      {estado.text}
+                    </span>
+                  </td>
+
+                  {/* Acciones */}
+                  <td className="py-3 px-4 text-center">
+                    <Link
+                      href={`/dashboard/${courseId}/${courseSlug}/entregas/${entrega.id}`}
+                      className="inline-block px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+                    >
+                      Revisar
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
