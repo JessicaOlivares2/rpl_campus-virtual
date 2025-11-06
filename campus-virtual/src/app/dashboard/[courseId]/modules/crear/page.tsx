@@ -6,27 +6,18 @@ import { cookies } from 'next/headers';
 
 export default async function CreateModulePage({ params }: { params: { courseId: string } }) {
   const sessionCookie = (await cookies()).get('session');
-  if (!sessionCookie) {
-    redirect('/login');
-  }
+  if (!sessionCookie) redirect('/login');
 
   const session = JSON.parse(sessionCookie.value);
-  const userRole = session.role;
-  if (userRole !== "TEACHER") {
-    notFound();
-  }
-  
+  if (session.role !== "TEACHER") notFound();
+
   const courseId = parseInt(params.courseId);
-  
-  // ¡Ahora también obtenemos el 'slug' para poder redirigir correctamente!
+
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     select: { title: true, slug: true }
   });
-
-  if (!course) {
-    notFound();
-  }
+  if (!course) notFound();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
@@ -38,7 +29,6 @@ export default async function CreateModulePage({ params }: { params: { courseId:
           </div>
           
           <div className="bg-white p-8 rounded-lg shadow-md max-w-lg mx-auto">
-            {/* Le pasamos el 'courseId' y el 'courseSlug' al componente del formulario */}
             <CreateModuleForm courseId={courseId} courseSlug={course.slug} />
           </div>
         </div>

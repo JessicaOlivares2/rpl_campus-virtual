@@ -1,100 +1,117 @@
-"use server" // Es necesario para usar 'cookies'
+"use server";
+
 import { redirect } from 'next/navigation';
-import { cookies } from "next/headers"; // Usamos cookies para obtener la sesión
+import { cookies } from "next/headers";
 import db from '@/lib/db'; 
 import { DocenteEntregasTable } from './DocenteEntregasTable';
+import BackButton from '@/components/BackButton'; // 👈 importamos el botón
+import Link from 'next/link';
 
-// Tipos basados en la consulta de Prisma
+// Tipos
 interface EntregaData {
-    id: number;
-    submittedAt: Date;
-    isSuccessful: boolean | null;
-    student: { name: string; lastName: string; };
-    assignment: { title: string; };
+  id: number;
+  submittedAt: Date;
+  isSuccessful: boolean | null;
+  student: { name: string; lastName: string };
+  assignment: { title: string };
 }
 
 interface DeliveriesPageProps {
   params: {
-    courseId: string; // ID numérico del curso (ej: 3)
-    courseSlug: string; // Slug del curso (ej: bases-de-datos)
+    courseId: string;
+    courseSlug: string;
   };
 }
 
 export default async function CourseDeliveriesPage({ params }: DeliveriesPageProps) {
-  
-  // 🔒 1. VERIFICACIÓN DE ROL USANDO COOKIES
+  // 1️⃣ Verificar sesión
   const sessionCookie = (await cookies()).get('session');
-
-  if (!sessionCookie) {
-    redirect('/login'); // Redirigir si no hay sesión
-  }
+  if (!sessionCookie) redirect('/login');
 
   const session = JSON.parse(sessionCookie.value);
-  // NOTA: Tu modelo User usa 'TEACHER' y 'STUDENT'
-  const isTeacher = session.role === 'TEACHER'; 
-
-  // Redirigir si no es docente (CONTROL DE ACCESO)
-  if (!isTeacher) {
-    redirect(`/dashboard/${params.courseId}/${params.courseSlug}`); 
+  if (session.role !== 'TEACHER') {
+    redirect(`/dashboard/${params.courseId}/${params.courseSlug}`);
   }
-  
+
   const courseIdNumber = parseInt(params.courseId);
   if (isNaN(courseIdNumber)) {
-    return <div className="p-6 text-red-600">Error: ID de curso inválido.</div>;
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-8 rounded-xl shadow-sm max-w-md text-center">
+          <h2 className="text-2xl font-semibold mb-2">Error: ID inválido</h2>
+          <p>El identificador del curso no es válido.</p>
+          <Link
+            href="/dashboard"
+            className="inline-block mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          >
+            Volver al panel
+          </Link>
+        </div>
+      </div>
+    );
   }
 
-  // ⚙️ 2. OBTENCIÓN DE DATOS (Lógica de Servidor con Prisma)
+  // 2️⃣ Cargar entregas
   try {
     const entregas: EntregaData[] = await db.submission.findMany({
       where: {
-        assignment: { 
-          module: { 
-            courseId: courseIdNumber, 
-          },
+        assignment: {
+          module: { courseId: courseIdNumber },
         },
       },
       select: {
         id: true,
-        submittedAt: true, 
-        isSuccessful: true, 
-        student: { 
-          select: { name: true, lastName: true },
-        },
-        assignment: { 
-          select: { title: true },
-        },
+        submittedAt: true,
+        isSuccessful: true,
+        student: { select: { name: true, lastName: true } },
+        assignment: { select: { title: true } },
       },
-      orderBy: {
-        submittedAt: 'desc', 
-      },
-    }) as EntregaData[]; // Forzamos el tipo para que coincida con la interfaz
+      orderBy: { submittedAt: 'desc' },
+    }) as EntregaData[];
 
-    // 3. RENDERIZADO DE LA VISTA
+    const nombreCurso = params.courseSlug
+      .split('-')
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(' ');
+
+    // 3️⃣ Renderizado elegante
     return (
-      <div className="min-h-screen bg-gray-100 p-8">
-        <div className="container mx-auto">
-          <div className="bg-white p-8 rounded-lg shadow-md">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Historial de Entregas</h1>
-            <p className="text-gray-600 mb-8">
-              Revisión de todas las entregas para el curso: {params.courseSlug.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}.
-            </p>
-            
-<DocenteEntregasTable 
-              entregas={entregas} 
-              courseId={params.courseId} 
-              courseSlug={params.courseSlug} // 🚨 ¡Añadido! 🚨
-          />      
-              </div>
+      <div className="min-h-screen bg-gray-50 py-12 px-6">
+        <div className="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+          
+          {/* --- Encabezado con botón atrás --- */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <BackButton /> {/* 👈 Tu botón reutilizable */}
+            <div className="text-center sm:text-right">
+              <h1 className="text-3xl font-bold text-gray-800">📘 Historial de Entregas</h1>
+              <p className="text-gray-600 mt-1">Curso: {nombreCurso}</p>
+            </div>
+          </div>
+
+          {/* --- Tabla de entregas --- */}
+          <DocenteEntregasTable
+            entregas={entregas}
+            courseId={params.courseId}
+            courseSlug={params.courseSlug}
+          />
         </div>
       </div>
     );
-
   } catch (error) {
     console.error("Error al cargar entregas:", error);
-    // Un error 500 elegante en caso de fallo de DB
-    return <div className="p-6 text-red-600 bg-red-50 border border-red-200 rounded-lg">
-        <h2 className="font-bold">Error de Carga</h2>
-        <p>No se pudo establecer conexión con la base de datos o la consulta falló.</p>
-    </div>
+    return (
+      <div className="flex items-center justify-center h-[70vh]">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-8 py-10 rounded-xl shadow-md max-w-lg text-center">
+          <h2 className="text-2xl font-bold mb-2">⚠️ Error de carga</h2>
+          <p>No se pudo conectar con la base de datos o la consulta falló.</p>
+          <Link
+            href="/dashboard"
+            className="inline-block mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          >
+            Volver al panel
+          </Link>
+        </div>
+      </div>
+    );
   }
 }

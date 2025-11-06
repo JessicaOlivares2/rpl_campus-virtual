@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -92,7 +92,7 @@ model Submission {
   submittedAt    DateTime  @default(now())
   isSuccessful   Boolean?  // Resultado final: true (Pasa) / false (Falla) / null (Pendiente)
   executionTimeMs Int?     // Para medir el rendimiento (< 5 segundos)
-  docenteComment   String?  @db.Text
+  docenteComment   String?  
   studentId      Int
   student        User      @relation(fields: [studentId], references: [id])
 

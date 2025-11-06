@@ -34,8 +34,7 @@ test("Los materiales estan categorizados depediendo el tipo de archivo(pdf,links
   ).toBeVisible();
 
   // 3. Navegación a Materiales
-  await page.getByRole("button", { name: "Ver Materiales" }).click();
-
+await page.getByRole("link", { name: "Ver Materiales" }).click();
   // 4. Esperar que la URL de materiales cargue (si es una ruta distinta)
   await page.waitForURL("**/materiales");
 

@@ -21,31 +21,41 @@ export default function CreateCourseForm({ commissions }: CreateCourseFormProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (formData: FormData) => {
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault(); // Previene el comportamiento predeterminado de enviar el formulario
+
+    const formData = new FormData(event.target as HTMLFormElement);
+    const data = Object.fromEntries(formData.entries()); // Convierte el FormData a un objeto simple
+
     setError('');
     setIsSubmitting(true);
 
-    const result = await createCourse(formData);
-    
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const result = await createCourse(formData); // Envía los datos al servidor como un objeto JSON
+
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (error) {
+      setError('Hubo un error al crear el curso.');
+    } finally {
       setIsSubmitting(false);
-    } else {
-      router.push('/dashboard');
     }
   };
 
   return (
-    <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-lg">
-      <h1 className="text-3xl font-bold mb-6 text-center">Crear Nuevo Curso</h1>
-      <form action={handleSubmit} className="space-y-6">
+    <div className="bg-gray-50 p-8 rounded-lg shadow-xl w-full max-w-lg mx-auto">
+      <h1 className="text-3xl font-semibold mb-6 text-center text-gray-800">Crear Nuevo Curso</h1>
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Campo para la Materia */}
         <div>
           <label htmlFor="subject" className="block text-gray-700 font-medium mb-2">Nombre de la Materia</label>
           <select
             id="subject"
             name="subject"
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300"
             required
           >
             <option value="">Selecciona una materia</option>
@@ -61,7 +71,7 @@ export default function CreateCourseForm({ commissions }: CreateCourseFormProps)
           <select
             id="commission"
             name="commission"
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300"
             required
           >
             <option value="">Selecciona la comisión</option>
@@ -77,7 +87,7 @@ export default function CreateCourseForm({ commissions }: CreateCourseFormProps)
           <select
             id="generation"
             name="generation"
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300"
             required
           >
             <option value="">Selecciona la generación</option>
@@ -87,32 +97,35 @@ export default function CreateCourseForm({ commissions }: CreateCourseFormProps)
           </select>
         </div>
         
-        {/* Campo para la Descripción (CORREGIDO) */}
+        {/* Campo para la Descripción */}
         <div>
           <label htmlFor="description" className="block text-gray-700 font-medium mb-2">Descripción del Curso</label>
           <textarea
             id="description"
             name="description"
-            rows={2} // Puedes ajustar el número de filas
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows={4} // Ajusta el número de filas para una mejor visualización
+            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300"
             required
           />
         </div>
         
-        {/* ... (el resto de tu formulario) */}
+        {/* Error */}
         {error && <p className="text-red-500 text-center">{error}</p>}
+
+        {/* Botón para enviar */}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full px-4 py-3 bg-blue-800 text-white font-bold rounded-lg shadow-md hover:bg-blue-900 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Creando...' : 'Crear Curso'}
         </button>
       </form>
-      <div className="mt-4 text-center">
-        <Link href="/dashboard" className="text-blue-600 hover:underline">Volver a Mis Cursos</Link>
+
+      {/* Enlace para volver a los cursos */}
+      <div className="mt-6 text-center">
+        <Link href="/dashboard" className="text-blue-600 hover:text-blue-700 hover:underline">Volver a Mis Cursos</Link>
       </div>
     </div>
   );
 }
-

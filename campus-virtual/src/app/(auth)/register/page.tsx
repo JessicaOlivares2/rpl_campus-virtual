@@ -35,11 +35,9 @@ const registerSchema = z
     birthDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, {
       message: "Formato de fecha inválido (dd/mm/aaaa)",
     }),
-    // === CAMBIO AQUÍ ===
     commissionCode: z
       .string()
       .min(1, { message: "El código de comisión es requerido" }),
-    // ==================
     password: z
       .string()
       .min(6, { message: "La contraseña debe tener al menos 6 caracteres" }),
@@ -61,9 +59,7 @@ export default function RegisterPage() {
       email: "",
       DNI: "",
       birthDate: "",
-      // === CAMBIO AQUÍ ===
       commissionCode: "",
-      // ==================
       password: "",
       confirmPassword: "",
     },
@@ -72,16 +68,13 @@ export default function RegisterPage() {
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     setIsLoading(true);
     try {
-      // Pasa el código de comisión a la acción del servidor
       await registerUser({
         name: values.name,
         lastName: values.lastName,
         email: values.email,
         DNI: values.DNI,
         birthDate: values.birthDate,
-        // === CAMBIO AQUÍ ===
         commissionCode: values.commissionCode,
-        // ==================
         password: values.password,
         confirmPassword: ""
       });
@@ -102,20 +95,20 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="text-xl font-bold text-gray-800">rpl.etec</div>
-          <nav className="space-x-4 flex items-center">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-50 via-blue-100 to-white">
+      <header className="bg-white shadow-md">
+        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="text-2xl font-semibold text-gray-800">rpl.etec</div>
+          <nav className="space-x-6">
             <Link
               href="/login"
-              className="text-blue-600 font-medium hover:text-blue-800"
+              className="text-blue-600 hover:text-blue-800 font-medium"
             >
               Iniciar sesión
             </Link>
             <Link
               href="/register"
-              className="text-gray-600 font-medium hover:text-gray-800"
+              className="text-gray-600 hover:text-gray-800 font-medium"
             >
               Registrarse
             </Link>
@@ -123,78 +116,98 @@ export default function RegisterPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg">
-          <div className="bg-white p-8 rounded-lg shadow-sm border text-center">
-            <div className="flex justify-center mb-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="60"
-                height="60"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-folder-open-dot"
-              >
-                <path d="M19 20a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-4h5a2 2 0 0 1 2 2v13z" />
-                <circle cx="12" cy="13" r="1" />
-              </svg>
-            </div>
+      <main className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-xl bg-white p-8 rounded-xl shadow-xl border border-gray-200">
+          <div className="flex justify-center mb-6">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="60"
+              height="60"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="lucide lucide-folder-open-dot text-blue-600"
+            >
+              <path d="M19 20a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-4h5a2 2 0 0 1 2 2v13z" />
+              <circle cx="12" cy="13" r="1" />
+            </svg>
+          </div>
 
-            <h1 className="text-2xl font-bold text-gray-800">
-              Crear una Cuenta
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Únete a nuestra plataforma educativa
-            </p>
+          <h1 className="text-3xl font-semibold text-gray-800 text-center">
+            Crear una Cuenta
+          </h1>
+          <p className="text-gray-600 text-center mt-2">
+            Únete a nuestra plataforma educativa
+          </p>
 
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4 mt-6"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nombre</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ingresa tu nombre" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Apellido</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ingresa tu apellido" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-6 mt-6"
+            >
+              {/* Nombre y Apellido */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Correo Electrónico</FormLabel>
+                      <FormLabel>Nombre</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ingresa tu nombre" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Apellido</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ingresa tu apellido" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Correo Electrónico */}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Correo Electrónico</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="ejemplo@etec.uba.ar"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* DNI y Fecha de Nacimiento */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="DNI"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>DNI</FormLabel>
                       <FormControl>
                         <Input
-                          type="email"
-                          placeholder="ejemplo@etec.uba.ar"
+                          placeholder="Sin puntos ni espacios"
                           {...field}
                         />
                       </FormControl>
@@ -202,116 +215,96 @@ export default function RegisterPage() {
                     </FormItem>
                   )}
                 />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="DNI"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>DNI</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Sin puntos ni espacios"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="birthDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fecha de Nacimiento</FormLabel>
-                        <FormControl>
-                          <Input placeholder="dd/mm/aaaa" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
                 <FormField
                   control={form.control}
-                  // === CAMBIO AQUÍ ===
-                  name="commissionCode"
-                  // ==================
+                  name="birthDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Código de Comisión</FormLabel>
+                      <FormLabel>Fecha de Nacimiento</FormLabel>
+                      <FormControl>
+                        <Input placeholder="dd/mm/aaaa" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Código de Comisión */}
+              <FormField
+                control={form.control}
+                name="commissionCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código de Comisión</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="El docente debe darte este código"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Contraseñas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contraseña</FormLabel>
                       <FormControl>
                         <Input
-                          // === CAMBIO AQUÍ ===
-                          placeholder="El docente debe darte este código"
+                          type="password"
+                          placeholder="Crea una contraseña segura"
                           {...field}
-                          // ==================
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirmar Contraseña</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="Repite tu contraseña"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Contraseña</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Crea una contraseña segura"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirmar Contraseña</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Repite tu contraseña"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-blue-800 hover:bg-blue-700 text-white font-bold"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
-                </Button>
-              </form>
-            </Form>
-
-            <div className="mt-6 text-sm">
-              ¿Ya tienes una cuenta?{" "}
-              <Link
-                href="/login"
-                className="text-blue-600 font-medium hover:underline"
+              {/* Botón de Envío */}
+              <Button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-md"
+                disabled={isLoading}
               >
-                Inicia sesión aquí
-              </Link>
-            </div>
+                {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
+              </Button>
+            </form>
+          </Form>
+
+          <div className="mt-6 text-sm text-center">
+            ¿Ya tienes una cuenta?{" "}
+            <Link
+              href="/login"
+              className="text-blue-600 hover:underline font-medium"
+            >
+              Inicia sesión aquí
+            </Link>
           </div>
         </div>
       </main>

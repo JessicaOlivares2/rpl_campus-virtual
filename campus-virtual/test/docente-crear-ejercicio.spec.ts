@@ -44,20 +44,31 @@ test('El docente puede crear un ejercicio y verificar su existencia', async ({ p
     ]);
     await expect(page.getByRole('heading', { name: CURSO_NOMBRE })).toBeVisible();
 
-    // Localizadores
-    const unidadHeading = page.getByText(UNIDAD_NOMBRE).first(); 
-    const crearEjercicioLink = page.getByRole('link', { name: '+ Crear Ejercicio' });
+    // ******************************************************
+    // *** CAMBIO CRÍTICO: Anidación del localizador *********
+    // ******************************************************
+    // 1. Localizar el contenedor de la unidad por su nombre (asumimos que es un <li>)
+    const unidadContainer = page.locator('li', { hasText: UNIDAD_NOMBRE }).first(); 
+    
+    // 2. Despliegue unidad (clic en el texto de la unidad)
+    await unidadContainer.getByText(UNIDAD_NOMBRE).first().click();
 
-    // despliegue unidad
-    await unidadHeading.click();
+    // 3. Localizar el botón '+ Crear Ejercicio' DENTRO de ese contenedor.
+    const crearEjercicioLink = unidadContainer.getByRole('link', { name: '+ Crear Ejercicio' });
+
     await expect(crearEjercicioLink).toBeVisible({ timeout: 10000 });
     await crearEjercicioLink.click();
+    // ******************************************************
+    // *** FIN CAMBIO CRÍTICO *******************************
+    // ******************************************************
+
 
     // formulario
     await expect(page.getByRole('heading', { name: /Crear Ejercicio para/i })).toBeVisible();
     await page.getByRole('textbox', { name: 'Título' }).fill(EJERCICIO_TITULO);
     await page.getByRole('textbox', { name: 'Descripción (Opcional)' }).fill(EJERCICIO_CONSIGNA);
     
+    // NOTA: Es importante que el path sea ABSOLUTO o Playwright fallará.
     await page.locator('input[type="file"]').setInputFiles(TEST_FILE_PATH);
     
     await page.getByLabel('Tipo de Ejercicio').selectOption(TIPO_EJERCICIO);
@@ -76,10 +87,12 @@ test('El docente puede crear un ejercicio y verificar su existencia', async ({ p
     await expect(page.getByRole('heading', { name: 'Guías de Ejercicios' })).toBeVisible({ timeout: 10000 });
 
     // --- PASO 3: Verificación ---
-    // Re-despliegue unidad 
-    await unidadHeading.click();
+    // Re-despliegue unidad (volviendo a hacer clic en el texto)
+    await unidadContainer.getByText(UNIDAD_NOMBRE).first().click();
 
     // Busqueda y Aserción Final
+    // NOTA: Aquí ya no necesitamos el localizador de la unidad, 
+    // ya que el título del ejercicio es único en la página.
     const ejercicioLink = page.getByRole('link', { name: EJERCICIO_TITULO });
 
     // Aserción estricta

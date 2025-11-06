@@ -24,6 +24,6 @@ test("El alumno puede acceder a la sección de materiales", async ({ page }) => 
   );
 
   await expect(page.getByText("Introducción a la Programación")).toBeVisible();
-  await page.getByRole("button", { name: "Ver Materiales" }).click();
+await page.getByRole("link", { name: "Ver Materiales" }).click();
   await expect(page.getByText("Materiales del Curso")).toBeVisible();
 });

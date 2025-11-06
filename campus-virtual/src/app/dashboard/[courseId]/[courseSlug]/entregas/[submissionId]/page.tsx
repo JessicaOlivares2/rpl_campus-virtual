@@ -1,113 +1,68 @@
-import { redirect } from 'next/navigation';
-import { cookies } from "next/headers";
-import db from '@/lib/db'; 
-import { SubmissionReviewView } from './SubmissionReviewView';
+import SubmissionReviewView from './SubmissionReviewView';
+import db from '@/lib/db';
 
-interface ReviewPageProps {
-    params: {
-        courseId: string; 
-        courseSlug: string; 
-        submissionId: string; 
-    };
+interface SubmissionReviewPageProps {
+  params: {
+    submissionId: string;
+  };
 }
 
-// ⚠️ TEMPORAL: Eliminado docenteComment de este tipo hasta la migración
-type SubmissionDetail = {
-    id: number;
-    submittedAt: Date;
-    codeSubmitted: string;
-    isSuccessful: boolean | null;
-    student: {
-        name: string;
-        lastName: string;
-    };
-    assignment: {
-        title: string;
-        module: {
-            courseId: number;
-        }
-    };
-};
+export default async function SubmissionReviewPage({ params }: SubmissionReviewPageProps) {
+  const { submissionId } = params;
 
+  // 1. OBTENER DATOS DE LA ENTREGA (Submission)
+  const submission = await db.submission.findUnique({
+    where: {
+      id: parseInt(submissionId),
+    },
+    select: {
+      id: true,
+      codeSubmitted: true,
+      isSuccessful: true,
+      submittedAt: true,
+      docenteComment: true,
+      student: { select: { name: true, lastName: true } },
+      assignment: { select: { title: true } },
+    },
+  });
 
-export default async function ReviewSubmissionPage({ params }: ReviewPageProps) {
-    
-    // ... (Validaciones de sesión y rol)
-    const sessionCookie = (await cookies()).get('session');
-    if (!sessionCookie) {
-        redirect('/login');
-    }
-    const session = JSON.parse(sessionCookie.value);
-    const isTeacher = session.role === 'TEACHER'; 
+  // 🛑 Si no se encuentra la entrega, mostrar un mensaje elegante
+  if (!submission) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-center bg-white p-8 rounded-xl shadow-md border border-gray-200 max-w-md">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-3">Entrega no encontrada</h2>
+          <p className="text-gray-600 mb-6">
+            La entrega solicitada no existe o fue eliminada.
+          </p>
+          <a
+            href="/dashboard" // 👈 Puedes cambiar la ruta según tu app
+            className="inline-block px-5 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-all"
+          >
+            Volver al panel
+          </a>
+        </div>
+      </div>
+    );
+  }
 
-    if (!isTeacher) {
-        redirect(`/dashboard/${params.courseId}/${params.courseSlug}`); 
-    }
-    
-    const submissionIdNumber = parseInt(params.submissionId);
+  // 2. Renderizar la vista principal
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-6">
+      <div className="max-w-5xl mx-auto">
+        {/* --- ENCABEZADO --- */}
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            🧾 Revisión de Entrega
+          </h1>
+          <p className="text-gray-600">
+            Revisa y califica la entrega de tu estudiante.
+          </p>
+        </div>
 
-    if (isNaN(submissionIdNumber)) {
-        return <div className="p-6 text-red-600">Error: ID de entrega (Submission) inválido.</div>;
-    }
-
-    let submission: SubmissionDetail | null = null;
-    try {
-        submission = await db.submission.findUnique({
-            where: {
-                id: submissionIdNumber,
-            },
-            select: {
-                id: true,
-                submittedAt: true,
-                codeSubmitted: true,
-                isSuccessful: true,
-                // ❌ LÍNEA ELIMINADA: docenteComment: true, 👈 Ya no se consulta
-                student: {
-                    select: { name: true, lastName: true },
-                },
-                assignment: {
-                    select: { 
-                        title: true, 
-                        module: {
-                            select: { courseId: true }
-                        }
-                    },
-                },
-            },
-        }) as SubmissionDetail | null;
-
-        if (!submission) {
-            return (
-                <div className="p-12 text-center text-gray-500">
-                    <h1 className="text-3xl font-bold mb-4">404 - Entrega No Encontrada</h1>
-                    <p>La entrega con ID "{params.submissionId}" no existe.</p>
-                </div>
-            );
-        }
-
-        // 3. Renderizado de la Vista
-        return (
-            <div className="min-h-screen bg-gray-50 p-8">
-                <div className="container mx-auto">
-                    <SubmissionReviewView 
-                        submission={submission}
-                        courseId={params.courseId} 
-                        courseSlug={params.courseSlug} 
-                    />
-                </div>
-            </div>
-        );
-
-    } catch (error) {
-        console.error(
-            "Error al cargar la entrega (DB o Servidor):", 
-            error instanceof Error ? error.message : error
-        );
-        return (
-             <div className="p-6 text-red-600 bg-red-100 border border-red-300 rounded-lg">
-                <h2 className="font-bold">Error de Carga</h2>
-                <p>No se pudo obtener la información de la entrega desde la base de datos. (Verifique si la migración de Prisma está aplicada).</p>
-            </div>
-        );
-    }
+        {/* --- COMPONENTE PRINCIPAL --- */}
+        <SubmissionReviewView initialSubmission={submission} />
+      </div>
+    </div>
+  );
 }

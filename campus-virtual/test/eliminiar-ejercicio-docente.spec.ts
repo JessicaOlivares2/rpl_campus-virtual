@@ -41,11 +41,10 @@ test('El docente puede eliminar un ejercicio y verificar su desaparición', asyn
         await expect(page.getByRole('heading', { name: CURSO_NOMBRE })).toBeVisible();
         
         // Desplegar la unidad para ver el botón 'Crear Ejercicio'
-        const unidadHeading = page.getByText(UNIDAD_NOMBRE).first(); 
-        await unidadHeading.click(); 
-        
+const unidadContainer = page.locator('li', { hasText: UNIDAD_NOMBRE }).first();
+await unidadContainer.getByText(UNIDAD_NOMBRE).first().click();        
         // Localizador de creación corregido
-        const crearEjercicioLink = page.getByText('+ Crear Ejercicio');
+const crearEjercicioLink = unidadContainer.getByRole('link', { name: '+ Crear Ejercicio' });
         await expect(crearEjercicioLink).toBeVisible({ timeout: 10000 });
         await crearEjercicioLink.click();
 

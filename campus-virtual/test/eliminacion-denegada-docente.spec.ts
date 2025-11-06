@@ -41,11 +41,10 @@ test('Debe impedir la eliminación de una unidad que tiene ejercicios asociados'
         await page.waitForTimeout(2000); 
         await page.goto(`${BASE_URL}/dashboard/3/${COURSE_SLUG}`); // Forzar recarga
 
-        const unidadTitulo = page.getByText(UNIDAD_TITULO_COMPLEX).first();
-        await unidadTitulo.click(); 
-        
-        const crearEjercicioLocator = page.getByText('+ Crear Ejercicio').first();
-        
+        const unidadContainer = page.locator('li', { hasText: UNIDAD_TITULO_COMPLEX }).first();
+        await unidadContainer.getByText(UNIDAD_TITULO_COMPLEX).first().click();        
+        const crearEjercicioLocator = unidadContainer.getByRole('link', { name: '+ Crear Ejercicio' });
+        await expect(crearEjercicioLocator).toBeVisible();
         await crearEjercicioLocator.click(); 
         
         await expect(page.getByRole('heading', { name: /Crear Ejercicio para/i })).toBeVisible();

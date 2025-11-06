@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
     timeout: 10000,
   });
 });
-
+const UNIDAD_TARGET = "Unidad 1: Conceptos Básicos";
 test("Al tocar una materia, el alumno es redirigido a la página de detalle y se puede ver los ejercicios", async ({
   page,
 }) => {
@@ -27,10 +27,9 @@ test("Al tocar una materia, el alumno es redirigido a la página de detalle y se
 
   await expect(page.getByText("Introducción a la Programación")).toBeVisible();
   await expect(page.getByText("Guías de Ejercicios")).toBeVisible();
-  await expect(page.getByText("Unidad 1: Conceptos Básicos")).toBeVisible();
-  await expect(page.getByRole("button", { name: "▼" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "▲" })).toBeHidden();
-  await page.getByRole("button", { name: "▼" }).click();
+const unidadHeading = page.getByText(UNIDAD_TARGET).first();
+  await expect(unidadHeading).toBeVisible();
+  await unidadHeading.click();;
   //tiene que aparecer los ejercicios
   await expect(page.getByText("Hola Mundo con Python")).toBeVisible();
   await expect(page.getByText("Variables y Tipos de Datos")).toBeVisible();
