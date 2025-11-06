@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 interface CreateModuleFormProps {
   courseId: number;
-  courseSlug: string; // ¡Añadimos la propiedad courseSlug!
+  courseSlug: string;
 }
 
 export default function CreateModuleForm({ courseId, courseSlug }: CreateModuleFormProps) {
@@ -22,16 +22,11 @@ export default function CreateModuleForm({ courseId, courseSlug }: CreateModuleF
       setSuccessMessage("¡Unidad creada con éxito!");
       setErrors({});
       setTimeout(() => {
-        // Usamos el courseId y el courseSlug para la redirección
         router.push(`/dashboard/${courseId}/${courseSlug}`);
       }, 1500);
     } else {
       setSuccessMessage(null);
-      if (result.errors) {
-        setErrors(result.errors);
-      } else {
-        setErrors({ general: [result.error || "Hubo un error desconocido."] });
-      }
+      setErrors(result.errors || { general: [result.error || "Hubo un error desconocido."] });
     }
   };
 
@@ -55,7 +50,6 @@ export default function CreateModuleForm({ courseId, courseSlug }: CreateModuleF
       </div>
 
       <div className="flex justify-end space-x-4">
-        {/* Usamos el courseId y el courseSlug para el Link */}
         <Link href={`/dashboard/${courseId}/${courseSlug}`} className="px-4 py-2 text-gray-600 rounded-lg hover:bg-gray-200 transition">
           Cancelar
         </Link>

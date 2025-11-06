@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 export default function BackButton({ label = 'Volver atrás' }: { label?: string }) {
   const router = useRouter();
@@ -7,19 +8,10 @@ export default function BackButton({ label = 'Volver atrás' }: { label?: string
   return (
     <button
       onClick={() => router.back()}
-      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors"
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={2}
-        stroke="currentColor"
-        className="w-5 h-5"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-      </svg>
-      <span className="font-medium">{label}</span>
+      <ArrowLeft className="w-5 h-5" />
+      <span>{label}</span>
     </button>
   );
 }
