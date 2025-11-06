@@ -28,11 +28,14 @@ test('Debe mostrar feedback de error al intentar crear sin Título', async ({ pa
   await expect(cursoLinkLocator).toBeVisible({ timeout: 10000 }); 
   await cursoLinkLocator.click(); 
   
-  // Despliegue unidad y clic en +Crear Ejercicio
-  // CORRECCIÓN: Usamos getByText tolerante para clickear la unidad.
-  await page.getByText(UNIDAD_NOMBRE, { exact: false }).first().click(); 
+  const unidadContainer = page.locator('li', { hasText: UNIDAD_NOMBRE }).first(); 
+
+  // 2. Despliegue unidad (clic en el texto de la unidad)
+  await unidadContainer.getByText(UNIDAD_NOMBRE).first().click();
   
-  const crearEjercicioLink = page.getByRole('link', { name: '+ Crear Ejercicio' });
+  // 3. Localizar el enlace '+ Crear Ejercicio' DENTRO de ese contenedor.
+  const crearEjercicioLink = unidadContainer.getByRole('link', { name: '+ Crear Ejercicio' });
+
   await expect(crearEjercicioLink).toBeVisible();
   await crearEjercicioLink.click();
   

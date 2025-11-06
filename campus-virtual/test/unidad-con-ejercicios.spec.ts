@@ -21,16 +21,17 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
+const UNIDAD_TARGET = "Unidad 1: Conceptos Básicos";
+
 test("La sección de Unidades con ejercicios asociados es visible", async ({
   page,
 }) => {
   await expect(page.getByText("Introducción a la Programación")).toBeVisible();
-  await expect(page.getByText("Guías de Ejercicios")).toBeVisible();
-  await expect(page.getByText("Unidad 1: Conceptos Básicos")).toBeVisible();
-  await expect(page.getByRole("button", { name: "▼" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "▲" })).toBeHidden();
-  await page.getByRole("button", { name: "▼" }).click();
-  //tiene que aparecer los ejercicios
-  await expect(page.getByText("Hola Mundo con Python")).toBeVisible();
-  await expect(page.getByText("Variables y Tipos de Datos")).toBeVisible();
+   await expect(page.getByText("Guías de Ejercicios")).toBeVisible();
+ const unidadHeading = page.getByText(UNIDAD_TARGET).first();
+   await expect(unidadHeading).toBeVisible();
+   await unidadHeading.click();;
+   //tiene que aparecer los ejercicios
+   await expect(page.getByText("Hola Mundo con Python")).toBeVisible();
+   await expect(page.getByText("Variables y Tipos de Datos")).toBeVisible();
 });

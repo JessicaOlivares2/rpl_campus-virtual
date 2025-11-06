@@ -30,29 +30,24 @@ test.beforeEach(async ({ page }) => {
   ).toBeVisible();
 });
 
+const UNIDAD_TARGET = "Unidad 1: Conceptos Básicos"; 
 test("Se puede ver el progreso de la unidad", async ({ page }) => {
   // Ya estamos en la página del curso (CourseDetailPage)
+
+ // 1. Localizar el encabezado/elemento principal de la unidad
+  // Esto será nuestro localizador para desplegar.
+  const unidadHeading = page.getByRole("heading", { name: UNIDAD_TARGET }).first();
 
   // Assertions de la estructura principal
   await expect(
     page.getByRole("heading", { name: "Guías de Ejercicios" })
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Unidad 1: Conceptos Básicos" })
-  ).toBeVisible();
+  await expect(unidadHeading).toBeVisible();
 
   // Assertions del progreso (asumiendo que está visible en el mismo elemento o cerca)
   await expect(page.getByText("Progreso: 0%")).toBeVisible();
 
-  // 1. Verificar el botón de despliegue antes de hacer clic
-  // El botón '▼' (desplegar) debe ser visible.
-  await expect(page.getByRole("button", { name: "▼" })).toBeVisible();
-
-  // El botón '▲' (ocultar) NO debe ser visible (o debe ser el mismo que cambia de ícono)
-  // Si el botón cambia de ícono/nombre, solo prueba el que está visible.
-
-  // 2. Desplegar la unidad
-  await page.getByRole("button", { name: "▼" }).click();
+ await unidadHeading.click();
 
   // 3. Verificar la visibilidad del botón '▲' (si aplica)
   // Si el ícono cambia a '▲', verifícalo. Si no, omite esta línea.
