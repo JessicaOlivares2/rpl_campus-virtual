@@ -7,8 +7,11 @@ import { cookies } from 'next/headers';
 import { getEnunciadoComponent } from '@/lib/enunciado-loader'; 
 // Eliminamos import dynamic, useState, DynamicCodeEditor de aquí.
 
-export default async function AssignmentDetailPage({ params }: { params: { courseId: string; courseSlug: string; assignmentId: string } }) {
-    
+
+
+// @ts-expect-error Next.js PageProps type mismatch in Docker build environment
+
+export default async function AssignmentDetailPage({ params }: any) {    
     // 1. Lógica de autenticación
     const sessionCookie = (await cookies()).get('session');
     if (!sessionCookie) {
@@ -38,7 +41,7 @@ export default async function AssignmentDetailPage({ params }: { params: { cours
             submissions: {
                 where: { studentId },
                 orderBy: { submittedAt: 'desc' },
-            } as any, 
+            }, 
             testFiles: true,
         },
     });
@@ -86,8 +89,8 @@ export default async function AssignmentDetailPage({ params }: { params: { cours
                             assignmentId={assignmentId}
                             isCompletedInitial={isCompletedInitial}
                             studentId={studentId}
-                            assignmentType={assignment.type}
-                            initialSubmissions={assignment.submissions as any}
+                            //assignmentType={assignment.type}
+                            //initialSubmissions={assignment.submissions as any}
                             initialCode={lastSubmissionCode} // ⬅️ Código inicial (última entrega o default)
                             // Puedes pasar el lenguaje si lo tienes en el modelo Course
                             // language={assignment.module.course.language} 
@@ -98,3 +101,4 @@ export default async function AssignmentDetailPage({ params }: { params: { cours
         </div>
     );
 }
+

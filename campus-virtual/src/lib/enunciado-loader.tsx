@@ -37,7 +37,7 @@ export async function getEnunciadoComponent(slug: string | null | undefined) {
     console.error(`[MDX Loader] Error al cargar el enunciado para el slug: ${slug}`, error);
     
     // Retorna un componente de error para mostrar al usuario, indicando el slug.
-    return () => (
+    const NotFoundComponent = () => (
         <div className="p-4 border border-red-300 bg-red-50 rounded-lg shadow-inner">
             <h3 className="text-red-700 font-bold">Error: Enunciado no encontrado</h3>
             <p className="text-red-600 text-sm mt-1">
@@ -46,5 +46,6 @@ export async function getEnunciadoComponent(slug: string | null | undefined) {
             </p>
         </div>
     );
+   return NotFoundComponent;
   }
 }
