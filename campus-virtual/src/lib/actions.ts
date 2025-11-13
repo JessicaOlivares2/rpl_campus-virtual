@@ -11,6 +11,8 @@ import { revalidatePath } from "next/cache";
 import fs from 'fs/promises';
 import path from 'path';
 import { slugify } from '@/lib/utils';
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { simpleSlugify } from '@/lib/utils';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'test-files'); 
 
@@ -368,125 +370,86 @@ export async function createModule(formData: FormData) {
 }
 
 //crear ejercicie /(docente)
-export async function createAssignment(formData: FormData) {
-  // 1. Parsed data con el campo File
-  // Asegúrate de que assignmentSchema.safeParse incluye todos los campos
-  const parsed = assignmentSchema.safeParse({
-    title: formData.get("title"),
-    description: formData.get("description"),
-    type: formData.get("type"),
-    moduleId: formData.get("moduleId"),
-    testFile: formData.get("testFile"), // Zod lo identificará como un objeto File
-  });
+// Esta función auxiliar procesa el archivo subido y extrae su contenido (string)
+async function processTestFile(testFile: File, assignmentId: number) {
+    const buffer = Buffer.from(await testFile.arrayBuffer());
+    const testCodeContent = buffer.toString('utf-8');
 
-  if (!parsed.success) {
-    const flattenedErrors = parsed.error.flatten();
-    return {
-      success: false,
-      errors: flattenedErrors.fieldErrors,
-      error: "Error de validación: Comprueba los campos obligatorios."
-    };
-  }
-
-  const { title, description, type, moduleId, testFile } = parsed.data;
-  
-  // 💡 CREAR EL SLUG A PARTIR DEL TÍTULO ANTES DE USARLO
-  const slug = slugify(title);
-
-  // Validación lógica: Si es un ejercicio de código (Quiz/Project), debe tener un archivo no vacío
-  const isCodeAssignment = type === 'Quiz' || type === 'Project';
-  if (isCodeAssignment && (!testFile || testFile.size === 0)) {
-    return {
-      success: false,
-      errors: { testFile: ["Para ejercicios tipo Quiz o Project, el archivo de pruebas es obligatorio."] },
-      error: "Falta el archivo de pruebas requerido."
-    };
-  }
-
-  let testFileStoragePath = null;
-  let testFileName = null;
-  
-  try {
-    // 2. Manejo y Guardado del Archivo (Si existe)
-    if (testFile && testFile.size > 0) {
-      await fs.mkdir(UPLOAD_DIR, { recursive: true });
-
-      const fileExtension = path.extname(testFile.name);
-      // Usamos el SLUG en el nombre para una identificación fácil
-      testFileName = `${slug}-${Date.now()}${fileExtension}`; 
-      testFileStoragePath = path.join(UPLOAD_DIR, testFileName);
-      
-      // Convertir File a Buffer y escribir en el disco
-      const bytes = await testFile.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      await fs.writeFile(testFileStoragePath, buffer);
-    }
-    
-    // 3. Crear la Asignación y el TestFile asociado
-    await prisma.assignment.create({
-      data: {
-        title,
-        slug, // ⬅️ AÑADIDO: Campo 'slug' para satisfacer el esquema de Prisma
-        description,
-        type,
-        moduleId: parseInt(moduleId),
-        // Conectar el TestFile si fue subido
-        ...(testFileStoragePath && {
-          testFiles: {
-            create: {
-              filename: testFile!.name,
-              storagePath: `/test-files/${testFileName}`, // Guardamos la ruta relativa
-            },
-          },
-        }),
-      },
-    });
-
-    // 4. Lógica de Redirección
-    const moduleRecord = await prisma.module.findUnique({
-      where: { id: parseInt(moduleId) },
-      select: { 
-        course: {
-          select: { 
-            id: true,
-            slug: true 
-          }
-        }
-      }
-    });
-
-    const courseId = moduleRecord?.course?.id;
-    const courseSlug = moduleRecord?.course?.slug;
-
-    if (courseId && courseSlug) {
-      const correctPath = `/dashboard/${courseId}/${courseSlug}`;
-      revalidatePath(correctPath);
-      redirect(correctPath);
-    } else {
-      revalidatePath(`/dashboard`);
-      return { success: true };
-    }
-  } catch (error) {
-    if (error && (error as Error).message.includes("NEXT_REDIRECT")) {
-        throw error;
-    }
-    
-    // Manejo de error: Si la DB falla, limpiamos el archivo que ya habíamos guardado
-    if (testFileStoragePath) {
-        try { await fs.unlink(testFileStoragePath); } catch (e) { console.error("Fallo al limpiar el archivo:", e); }
-    }
-    
-    // 💡 IMPORTANTE: Si el slug ya existe, Prisma dará un error P2002.
-    // Podrías manejarlo aquí para dar un mensaje más específico.
-
-    console.error("Error al crear la asignación:", error);
-    return {
-      success: false,
-      error: "Error al crear la asignación. Inténtalo de nuevo.",
-    };
-  }
+    await prisma.testFile.create({
+        data: {
+            filename: testFile.name,
+            content: testCodeContent, // Guardamos el contenido en lugar del path de almacenamiento
+            assignmentId: assignmentId,
+        }
+    });
 }
 
+export async function createAssignment(formData: FormData) {
+    
+    // Extracción de datos (adaptada a tu estructura)
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const type = formData.get('type') as string; 
+    const moduleIdStr = formData.get('moduleId') as string;
+    const testFile = formData.get('testFile') as File | null;
+    
+    const moduleId = parseInt(moduleIdStr);
+
+    if (!title || !moduleId) {
+         return { success: false, message: "Error de validación: Título y Módulo son requeridos." };
+    }
+    
+    const slug = simpleSlugify(title) + '-' + Date.now().toString().slice(-4);
+    
+    // Validación de negocio: debe haber archivo para Quiz/Project
+    const isCodeAssignment = type === 'Quiz' || type === 'Project';
+    if (isCodeAssignment && (!testFile || testFile.size === 0)) {
+        return { success: false, message: "Debe subir un archivo de pruebas (.py) para Exámenes y Proyectos." };
+    }
+    
+    try {
+        // Crear la Asignación
+        const newAssignment = await prisma.assignment.create({
+            data: { title, slug, description, type, moduleId }
+        });
+
+        // Procesar y guardar el CONTENIDO del archivo de prueba (si existe)
+        if (testFile && testFile.size > 0) {
+            await processTestFile(testFile, newAssignment.id);
+        }
+
+        // Lógica de Redirección
+        const moduleRecord = await prisma.module.findUnique({
+             where: { id: moduleId },
+             select: { course: { select: { id: true, slug: true } } }
+        });
+
+        const courseId = moduleRecord?.course?.id;
+        const courseSlug = moduleRecord?.course?.slug;
+
+        if (courseId && courseSlug) {
+            const correctPath = `/dashboard/${courseId}/${courseSlug}`;
+            revalidatePath(correctPath);
+            redirect(correctPath); 
+        } 
+        
+        revalidatePath(`/dashboard`);
+        return { success: true, assignment: newAssignment };
+        
+    } catch (error) {
+        
+        if (error && (error as Error).message.includes("NEXT_REDIRECT")) {
+            throw error;
+        }
+
+        if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+             return { success: false, message: "Ya existe un ejercicio con un título muy similar. Intenta ser más específico." };
+        }
+        
+        console.error("Error al crear la asignación:", error);
+        return { success: false, message: "Error interno al crear la asignación. Inténtalo de nuevo." };
+    }
+}
 // ========================================================================
 // ⭐ NUEVA FUNCIÓN: submitCode (Para el Alumno)
 // ========================================================================
@@ -497,60 +460,219 @@ export async function createAssignment(formData: FormData) {
  * ⚠️ NOTA: Este es un placeholder de simulación. La implementación real
  * requiere un entorno seguro (sandbox/Docker) para ejecutar código de usuario.
  */
-export async function submitCode(studentId: number, assignmentId: number, code: string) {
-  // Lógica de simulación: Éxito si incluye la solución esperada, falla si incluye un error
-  const isSuccessful = code.includes("return a + b") && !code.includes("a * b"); 
-  const executionTimeMs = Math.floor(Math.random() * 2000) + 100; // Simula entre 100ms y 2100ms
-  
-  try {
-    // 1. Crear la Submission (Historial de Entrega)
-    const newSubmission = await prisma.submission.create({
-      data: {
-        studentId,
-        assignmentId,
-        codeSubmitted: code,
-        isSuccessful,
-        executionTimeMs,
-      },
-    });
+interface TestResult {
+    passed: boolean;
+    failureDetails: string;
+}
 
-    // 2. Si es exitoso, marcar el Assignment como completado.
-    if (isSuccessful) {
-      await prisma.studentProgress.upsert({
-        where: {
-          studentId_assignmentId: {
-            studentId,
-            assignmentId,
-          },
-        },
-        update: {
-          isCompleted: true,
-          completionDate: new Date(),
-        },
-        create: {
-          studentId,
-          assignmentId,
-          isCompleted: true,
-          completionDate: new Date(),
-        },
-      });
-    }
-    
-    // 3. Devolver el resultado de la prueba Y la submission para actualizar el historial en el cliente
-    return { 
-        success: true,
-        passed: isSuccessful, 
-        message: isSuccessful ? `¡Prueba Superada! Tiempo: ${executionTimeMs}ms` : `Prueba Fallida. Revisa tu lógica.`,
-        submission: newSubmission,
-    };
-  } catch (error) {
-    console.error("Error al procesar la submission:", error);
-    return { 
-        success: false, 
-        passed: false,
-        message: "Error interno del servidor al procesar tu código." 
-    };
-  }
+// ⭐ FUNCIÓN CLAVE: Extrae metadata del test.py subido
+function extractGradingMetadata(testCodeContent: string): any {
+    const metadata: any = { solutionCode: null, customMessage: null, detailedFailures: [] };
+
+    // 1. Solución y Mensaje Base: Usamos ([^\r\n]*) para capturar SÓLO hasta el final de la línea
+    const solutionMatch = testCodeContent.match(/#\s*SOLUTION:\s*([^\r\n]*)/i);
+    const messageMatch = testCodeContent.match(/#\s*FAILURE_MESSAGE:\s*([^\r\n]*)/i);
+    
+    metadata.solutionCode = solutionMatch ? solutionMatch[1].trim() : null;
+    metadata.customMessage = messageMatch ? messageMatch[1].trim() : null;
+
+    // 2. Buscar nuevos tests de detección específicos (Múltiples líneas)
+    // También aplicamos la restricción en la búsqueda de contenido (match[2])
+    const detailMatches = testCodeContent.matchAll(/#\s*FAILURE_DETECT_IF_CONTAINS_(.+?):\s*([^\r\n]*)/gi);
+
+    for (const match of detailMatches) {
+        const keyword = match[1].toLowerCase(); 
+        const contentToDetect = match[2].trim(); 
+        
+        // Buscamos el mensaje asociado (También restringido a una sola línea)
+        const messageMatchDetail = testCodeContent.match(new RegExp(`#\\s*FAILURE_MESSAGE_${keyword}:\\s*([^\r\n]*)`, 'i'));
+
+        if (messageMatchDetail) {
+             metadata.detailedFailures.push({
+                 keyword: contentToDetect,
+                 message: messageMatchDetail[1].trim()
+             });
+        }
+    }
+    return metadata;
+}
+// -----------------------------------------------------------------
+// FUNCIÓN CENTRAL DE SIMULACIÓN (LIMPIA)
+// -----------------------------------------------------------------
+
+function simulateTestRun(studentCode: string, testCodeContent: string, executionTimeMs: number): TestResult {
+    
+    const metadata = extractGradingMetadata(testCodeContent);
+    const expectedSolution = metadata.solutionCode;
+    const customFailureMessage = metadata.customMessage;
+
+    // 1. NORMALIZACIÓN DE CÓDIGO para ignorar sangrías y saltos de línea (Python legible)
+    const cleanStudentCode = studentCode.replace(/\s/g, ''); 
+
+    // 2. Chequeo de Fallos Detallados por contenido (PRIORIDAD AL FEEDBACK ESPECÍFICO)
+    for (const failure of metadata.detailedFailures) {
+        // Limpiamos el keyword por si tiene espacios (aunque en la DB es mejor ponerlo limpio)
+        const cleanKeyword = failure.keyword.replace(/\s/g, ''); 
+        
+        if (cleanStudentCode.includes(cleanKeyword)) {
+            // Falla por un error conocido y da feedback específico
+            return {
+                passed: false,
+                failureDetails: `
+================================= FAILURES ==================================
+E SpecificError: ${failure.message}
+E  > [Regla de Estilo Rota. Se detectó la palabra clave: '${failure.keyword}' en su código.]
+========================= 1 failed, 0 passed en ${executionTimeMs/1000}s =========================
+                `.trim()
+            };
+        }
+    }
+    
+    // 3. Chequeo de Fallo de Solución Base (String Matching)
+    let isSuccessful = false;
+    
+    if (expectedSolution) {
+        const cleanExpectedSolution = expectedSolution.replace(/\s/g, ''); 
+        isSuccessful = cleanStudentCode.includes(cleanExpectedSolution);
+    } else {
+        isSuccessful = false; 
+    }
+    
+    // 4. Generación del Feedback Final
+    let failureDetails = '';
+    
+    if (isSuccessful) {
+        failureDetails = `========================= Todos los tests han sido exitosos en ${executionTimeMs/1000}s =========================`;
+    } else {
+        // Usa el mensaje base si falló el string matching
+        const baseError = customFailureMessage || "Error: El código no implementa la lógica esperada o está incompleto. Verifique el enunciado.";
+        
+        failureDetails = `
+================================= FAILURES ==================================
+E AssertionError: ${baseError}
+E  > [Se intentó validar que su código contenga: "${expectedSolution || 'N/A: Solución no configurada.'}" en su forma más simple.]
+========================= 1 failed, 0 passed en ${executionTimeMs/1000}s =========================
+        `.trim();
+    }
+
+    return { passed: isSuccessful, failureDetails };
+}
+
+// =================================================================
+// 2. SERVER ACTIONS
+// =================================================================
+
+// -----------------------------------------------------------------
+// SUBMIT CODE (H1, H2, H3)
+// -----------------------------------------------------------------
+
+export async function submitCode(studentId: number, assignmentId: number, code: string) {
+    console.log("------------------- ID RECIBIDO -------------------");
+    console.log("assignmentId recibido:", assignmentId);
+    console.log("---------------------------------------------------");
+    
+    // 1. BUSCAR EL EJERCICIO Y EL CÓDIGO DE PRUEBA DESDE LA DB (H3)
+    const assignment = await prisma.assignment.findUnique({
+        where: { id: assignmentId },
+        include: { testFiles: { take: 1, select: { content: true } } } 
+    });
+
+    // Validación de configuración (H3)
+    if (!assignment || assignment.testFiles.length === 0 || !assignment.testFiles[0].content) {
+         return { 
+             success: false, 
+             passed: false,
+             message: "Error de configuración: El ejercicio no tiene pruebas asociadas.",
+             details: "El administrador debe subir y configurar el archivo de pruebas (.py)."
+         };
+    }
+    
+    const testCodeContent = assignment.testFiles[0].content;
+    
+    // ⭐ DETECCIÓN DE BUCLE/TIMEOUT
+    const isLoopDetected = code.includes("for") || code.includes("while"); 
+    let executionTimeMs = 0;
+    const TIMEOUT_LIMIT = 5000; // 5 segundos
+
+    // 2. SIMULACIÓN DEL DELAY/TIMEOUT (H2)
+    if (isLoopDetected) {
+        // Simulación de timeout, esperamos 8s (más de 5s)
+        console.log(`[EXEC] Simulación de proceso de larga ejecución (8s) por bucle detectado...`);
+        await new Promise(resolve => setTimeout(resolve, 8000));
+        executionTimeMs = 8000;
+    } else {
+        // Ejecución rápida
+        executionTimeMs = Math.floor(Math.random() * 2000) + 100;
+    }
+    
+    // 3. EJECUTAR LA SIMULACIÓN
+    let testResult: TestResult; 
+
+    // ⭐ LÓGICA DE FEEDBACK DE TIMEOUT (PRIORIDAD AL TIMEOUT) ⭐
+    if (isLoopDetected && executionTimeMs > TIMEOUT_LIMIT) { 
+        // Si detectamos un bucle Y el tiempo simulado excede el límite
+        testResult = {
+            passed: false,
+            failureDetails: `
+================================= TIMEOUT ERROR ==================================
+E Error: La ejecución del código excedió el límite de ${TIMEOUT_LIMIT/1000} segundos.
+E  > El proceso fue terminado automáticamente para proteger la plataforma.
+E  > Revisa si tu código contiene un bucle infinito o cálculos ineficientes.
+========================= 1 failed (TIMEOUT), 0 passed =========================
+            `.trim(),
+        };
+    } else {
+        // Si no es un timeout, ejecuta la simulación normal de lógica (Tests Detallados o String Matching)
+        testResult = simulateTestRun(code, testCodeContent, executionTimeMs); 
+    }
+    // ⭐ FIN DE LÓGICA DE TIMEOUT ⭐
+    
+    // 4. PERSISTENCIA DE DATOS (Prisma)
+    try {
+        const newSubmission = await prisma.submission.create({
+            data: {
+                studentId,
+                assignmentId,
+                codeSubmitted: code,
+                isSuccessful: testResult.passed,
+                executionTimeMs,
+                submittedAt: new Date(),
+            },
+        });
+
+        // 5. Actualizar progreso si pasa
+        if (testResult.passed) {
+             await prisma.studentProgress.upsert({
+                 where: {
+                     studentId_assignmentId: { studentId, assignmentId },
+                 },
+                 update: { isCompleted: true, completionDate: new Date() },
+                 create: { studentId, assignmentId, isCompleted: true, completionDate: new Date() },
+             });
+             // Asume revalidatePath está importado o lo eliminas si no es necesario.
+        }
+        
+        // 6. Devolver el resultado (H1)
+        return { 
+            success: true,
+            passed: testResult.passed, 
+            message: testResult.passed
+                ? `✅ ¡Prueba Superada! Tiempo: ${executionTimeMs}ms` 
+                : `❌ Prueba Fallida. Revisa el detalle.`,
+            details: testResult.failureDetails,
+            submission: newSubmission, 
+        };
+
+    } catch (error) {
+        console.error("Error al procesar la submission en Prisma:", error);
+        return { 
+            success: false, 
+            passed: false,
+            message: "Error interno del servidor al guardar el resultado.",
+            details: `Ocurrió un error en la base de datos.`,
+            submission: null, 
+        };
+    }
 }
 
 export async function deleteAssignment(assignmentId: number) {
@@ -672,3 +794,5 @@ export async function saveDocenteReview(data: ReviewData) {
         return { success: false, message: "Error en el servidor al guardar la revisión." };
     }
 }
+
+

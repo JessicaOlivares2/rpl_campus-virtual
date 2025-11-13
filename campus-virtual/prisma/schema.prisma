@@ -79,11 +79,12 @@ model Assignment {
 }
 
 model TestFile {
-  id           Int      @id @default(autoincrement())
-  filename     String   // Nombre del archivo (ej: test_unitario_1.py)
-  storagePath  String   // Ruta donde se guarda el archivo en el servidor/S3
-  assignmentId Int
-  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  id             Int      @id @default(autoincrement())
+  filename       String   // Nombre del archivo (ej: test_unitario_1.py)
+  // storagePath  String   // Ya no es necesario para la simulación
+  content        String   @default("") // ⭐ AÑADIR @default("")
+  assignmentId   Int
+  assignment     Assignment @relation(fields: [assignmentId], references: [id])
 }
 
 model Submission {

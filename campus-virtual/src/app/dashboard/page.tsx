@@ -48,9 +48,7 @@ export default async function DashboardPage() {
 
 
             {/* Botón para crear nuevo curso */}
-            <div className="mb-8">
-              <Link href="/dashboard/cursos/crear" className="inline-block px-6 py-3 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition">
-
+            
             <div className="mb-8 text-center">
               <Link
                 href="/dashboard/cursos/crear"

@@ -6,6 +6,7 @@
     "test": "npx playwright test",
     "codegen": "npx playwright codegen",
     "prisma:generate": "npx prisma generate",
+    "prisma:studio": "npx prisma studio",
     "prisma:migrate": "npx prisma migrate dev",
     "dev": "next dev --turbopack",
     "build": "next build",

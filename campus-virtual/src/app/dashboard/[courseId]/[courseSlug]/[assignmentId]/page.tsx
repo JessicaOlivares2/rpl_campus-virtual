@@ -4,21 +4,17 @@ import Header from '@/components/ui/Header';
 import AssignmentInteractiveContent from '@/components/AssignmentInteractiveContent'; 
 import { cookies } from 'next/headers';
 import { getEnunciadoComponent } from '@/lib/enunciado-loader'; 
-import BackButton from '@/components/BackButton'; // ⬅️ Importamos el botón
+import BackButton from '@/components/BackButton'; 
 
 
-
-
-// @ts-expect-error Next.js PageProps type mismatch in Docker build environment
-
-export default async function AssignmentDetailPage({ params }: any) {    
-    // 1. Lógica de autenticación
-
-export default async function AssignmentDetailPage({ params }: { params: { courseId: string; courseSlug: string; assignmentId: string } }) {
-    
-
+// 1. Lógica de autenticación y carga de datos
+export default async function AssignmentDetailPage({ 
+    params 
+}: { 
+    params: { courseId: string; courseSlug: string; assignmentId: string } 
+}) {
     const sessionCookie = (await cookies()).get('session');
-    if (!sessionCookie) notFound();
+    if (!sessionCookie) notFound(); // Usar notFound() o redirect('/login')
     const session = JSON.parse(sessionCookie.value);
     const studentId = session.userId;
     
@@ -28,24 +24,19 @@ export default async function AssignmentDetailPage({ params }: { params: { cours
     const assignment = await prisma.assignment.findUnique({
         where: { id: assignmentId },
         include: {
-
-            module: {
-                include: {
-                    course: true,
-                },
+            // Unir las inclusiones duplicadas en una sola estructura:
+            module: { 
+                include: { 
+                    course: true 
+                } 
             },
-            progress: {
-                where: { studentId },
+            progress: { 
+                where: { studentId } 
             },
-            submissions: {
-                where: { studentId },
-                orderBy: { submittedAt: 'desc' },
-            }, 
-
-            module: { include: { course: true } },
-            progress: { where: { studentId } },
-            submissions: { where: { studentId }, orderBy: { submittedAt: 'desc' } } as any,
-
+            submissions: { 
+                where: { studentId }, 
+                orderBy: { submittedAt: 'desc' } as any, // 'as any' para evitar el error de tipado en Prisma con Next.js
+            },
             testFiles: true,
         },
     });
@@ -102,6 +93,7 @@ export default async function AssignmentDetailPage({ params }: { params: { cours
                             assignmentType={assignment.type}
                             initialSubmissions={assignment.submissions as any}
                             initialCode={lastSubmissionCode}
+                            initialTestFiles={assignment.testFiles as any} // ⬅️ AGREGADO: Paso de testFiles
 
                         />
                     </div>
@@ -110,4 +102,5 @@ export default async function AssignmentDetailPage({ params }: { params: { cours
         </div>
     );
 }
+
 
