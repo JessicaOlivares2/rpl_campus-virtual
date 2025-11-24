@@ -99,6 +99,10 @@ model Submission {
 
   assignmentId   Int
   assignment     Assignment @relation(fields: [assignmentId], references: [id])
+
+  rawResult        String?    // ⭐ Necesario para mostrar errores
+  passedTests      Int?       // opcional pero útil
+  failedTests      Int?       // opcional
 }
 
 model StudentProgress {

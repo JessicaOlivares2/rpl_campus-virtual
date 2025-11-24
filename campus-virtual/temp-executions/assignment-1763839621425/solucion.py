@@ -1,0 +1,1 @@
+def procesar_cadena(s):      cadena_invertida = s[::-1]      conteo_vocales = sum(1 for c in cadena_invertida if c.lower() in "aeiou")      return (cadena_invertida, conteo_vocales)  
