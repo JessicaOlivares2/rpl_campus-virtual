@@ -14,7 +14,7 @@ import { slugify } from '@/lib/utils';
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { simpleSlugify } from '@/lib/utils';
 // ⬇️ NUEVAS IMPORTACIONES REQUERIDAS PARA EJECUCIÓN REAL ⬇️
-import { exec, execSync } from 'child_process';
+import { exec, execSync, spawn } from 'child_process';
 import { promisify } from 'util';
 import util from 'util';
 const execPromise = promisify(exec);
@@ -453,7 +453,7 @@ const TEMP_DIR = path.join(process.cwd(), 'temp-executions');
 const PYTHON_CMD = process.platform === 'win32'
   ? "C:/venvs/campus/Scripts/python.exe"
   : "python3";
-  const DEFAULT_TIMEOUT_MS = 7000;
+  const DEFAULT_TIMEOUT_MS = 5000;
 
 await fs.mkdir(TEMP_DIR, { recursive: true });
 
@@ -468,101 +468,124 @@ export interface TestResult {
 // ⭐ EJECUCIÓN DE PYTEST SOBRE CÓDIGO DEL ALUMNO ⭐
 // -----------------------------------------------------------------
 
+function detectInfiniteLoop(code: string): string | null {
+  const patterns = [
+    /\bwhile\s+True\b/i, // while True sin break visible
+    /\bdef\s+(\w+)\s*\([\w, ]*\)\s*:\s*[\s\S]*\1\(/i // recursión directa
+  ];
+
+  for (const p of patterns) {
+    if (p.test(code)) return "⚠ Se detectó un loop potencial o recursión en el código";
+  }
+  return null;
+}
+
 export async function realExecuteTests(
   studentCode: string,
   testFilesContent: { filename: string, content: string }[],
   timeoutMs = DEFAULT_TIMEOUT_MS
-) {
+): Promise<{ passed: boolean; testResults: TestResult[], rawOutput: string }> {
+
+  // 1️⃣ Detectar loops infinitos antes de ejecutar
+  const loopWarning = detectInfiniteLoop(studentCode);
+  if (loopWarning) {
+    return {
+      passed: false,
+      testResults: [{
+        name: "Loop detectado",
+        passed: false,
+        message: loopWarning,
+        raw: ""
+      }],
+      rawOutput: ""
+    };
+  }
+
+  // 2️⃣ Crear sandbox temporal
   const uniqueId = Date.now() + '-' + Math.floor(Math.random() * 9999);
-  const tempDir = path.join(process.cwd(), 'temp-executions', `submission-${uniqueId}`);
+  const tempDir = path.join(TEMP_DIR, `submission-${uniqueId}`);
   await fs.mkdir(tempDir, { recursive: true });
 
-  // Guardar codigo del alumno
   await fs.writeFile(path.join(tempDir, "solucion.py"), studentCode, "utf8");
-
-  // Guardar archivos de test
   for (const t of testFilesContent) {
     await fs.writeFile(path.join(tempDir, t.filename), t.content, "utf8");
   }
 
-  const cmd = `${PYTHON_CMD} -u -m pytest "${tempDir}" --tb=short --color=no -v`;
+  // 3️⃣ Ejecutar pytest con spawn y timeout
+  return new Promise((resolve) => {
+    const args = ["-u", "-m", "pytest", tempDir, "--tb=short", "--color=no", "-v"];
+    const child = spawn(PYTHON_CMD, args, { cwd: tempDir });
 
-  try {
-    const { stdout, stderr } = await execPromise(cmd, { cwd: tempDir, timeout: timeoutMs, shell: true });
-    
-    console.log("========== PYTEST RAW STDOUT ==========");
-    console.log(stdout);
-    console.log("========== PYTEST RAW STDERR ==========");
-    console.log(stderr);
-    console.log("========================================");
+    let stdout = "";
+    let stderr = "";
+    let finished = false;
 
-    const raw = stdout + stderr;
+    const timeout = setTimeout(() => {
+      if (!finished) {
+        finished = true;
+        child.kill("SIGKILL");
+        resolve({
+          passed: false,
+          testResults: [{
+            name: "Timeout / Infinite loop",
+            passed: false,
+            message: "❌ El código tardó más de 5 segundos o entró en loop infinito",
+            raw: ""
+          }],
+          rawOutput: stdout + stderr
+        });
+      }
+    }, timeoutMs);
 
-    const testResults = parsePytest(raw);
-    console.log("========== PARSING PYTEST OUTPUT ==========");
-    console.log(raw);
-    console.log("===========================================");
+    child.stdout.on("data", (data) => { stdout += data.toString(); });
+    child.stderr.on("data", (data) => { stderr += data.toString(); });
 
-    const passed = testResults.every(t => t.passed);
-    
-    return { passed, testResults, rawOutput: raw };
-    
-  } catch (err: any) {
-    const raw = (err.stdout || "") + (err.stderr || "");
-    const parsed = parsePytest(raw);
+    child.on("exit", () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
 
-    return {
-      passed: false,
-      testResults: parsed.length ? parsed : [{
-        name: "Error ejecución",
+      const raw = stdout + stderr;
+      const testResults = parsePytest(raw);
+      const passed = testResults.every(t => t.passed);
+      resolve({ passed, testResults, rawOutput: raw });
+    });
+
+    child.on("error", (err) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      resolve({
         passed: false,
-        message: err.message || "Error desconocido al ejecutar tests",
-        raw
-      }],
-      rawOutput: raw
-    };
-  }
+        testResults: [{
+          name: "Error ejecución",
+          passed: false,
+          message: err.message,
+          raw: ""
+        }],
+        rawOutput: stdout + stderr
+      });
+    });
+  });
 }
 
 
-// -----------------------------------------------------------
-//  PARSING ROBUSTO DE PYTEST
-// -----------------------------------------------------------
-// Detecta líneas tipo:
-// test_archivo.py::test_nombre PASSED
-// test_archivo.py::test_nombre FAILED
-// test_archivo.py::test_nombre ERROR
-// -----------------------------------------------------------
-function parsePytest(output: string) {
-  console.log("===== parsePytest: OUTPUT RECIBIDO =====");
-  console.log(output);
-  console.log("========================================");
-
-  const results = [];
+// -------------------------
+// Parsing de pytest
+// -------------------------
+function parsePytest(output: string): TestResult[] {
+  const results: TestResult[] = [];
   const lines = output.split("\n");
-  
-  console.log("===== parsePytest: LÍNEAS =====");
-  console.log(lines);
-  console.log("================================");
-
   for (const line of lines) {
-        console.log("Analizando línea:", line);
-
     const m = line.match(/(test_[\w]+)\s+(PASSED|FAILED|ERROR)/i);
     if (!m) continue;
-    console.log("MATCH ENCONTRADO:", m);
-    const testName = m[1];
-    const status = m[2].toUpperCase();
-
     results.push({
-      name: testName,
-      passed: status === "PASSED",
-      message: status === "PASSED" ? "OK" : "ERROR",
+      name: m[1],
+      passed: m[2].toUpperCase() === "PASSED",
+      message: m[2].toUpperCase() === "PASSED" ? "✅ OK" : "❌ ERROR",
       raw: line
     });
   }
-
-  // ⚠ Si pytest no mostró ningún test, marcamos error real
   if (results.length === 0) {
     results.push({
       name: "Desconocido",
@@ -571,7 +594,6 @@ function parsePytest(output: string) {
       raw: output
     });
   }
-
   return results;
 }
 
